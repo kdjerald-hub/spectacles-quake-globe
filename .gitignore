@@ -2,6 +2,8 @@ node_modules/
 .DS_Store
 __pycache__/
 *.pyc
+# Local working drafts for competition entries (personal notes, not part of the project)
+submission/
 tools/typecheck/.tmp/
 # Lens Studio caches (keep the project, not the derived data)
 lens/**/Cache/
