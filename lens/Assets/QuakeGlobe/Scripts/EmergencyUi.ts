@@ -97,7 +97,9 @@ export class DetailsCard extends CardBase {
     super(parent, "Details Card", widthCm, font);
     this.title = this.line("Title", 44, TITLE, 1);
     this.title.text = "Quake details";
-    this.body = this.line("Body", 38, BODY, 5);
+    // Seven lines: magnitude/depth, coordinates, place (may wrap), time, and the nearest plate
+    // boundary (which can wrap to two lines).
+    this.body = this.line("Body", 38, BODY, 7);
     this.gap(0.6);
     const h = 3.2;
     const row = this.y - h / 2;

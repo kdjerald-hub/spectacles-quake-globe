@@ -645,4 +645,9 @@ export class EmergencyOverlay {
   get isAlertActive(): boolean {
     return this.alertActive;
   }
+
+  /** The current home point (confirmed, else the default), for pinning the home country's label. */
+  get home(): { lat: number; lon: number } {
+    return this.homeConfirmed ? this.homeLatLon : DEFAULT_HOME;
+  }
 }

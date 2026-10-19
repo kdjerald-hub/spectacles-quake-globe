@@ -14,6 +14,9 @@ import type { FeedId, Quake } from "../Core/usgs";
 import { graticule, polylinesToRibbonMeshes } from "../Core/lines";
 import { buildEpicenterRing, buildHaloMesh, buildMarkerMeshes, highlightHalfSize } from "../Core/markers";
 import { buildOctahedron, buildPrism, buildRing } from "../Core/shapes";
+import { boundaryPolylines, buildSubductionBarbs } from "../Core/plates";
+import type { PlateBoundaryClass } from "../Core/plates";
+import type { LabelView } from "../Core/labels";
 import { LINE_RADIUS_FACTOR } from "../Core/occluder";
 import {
   ATMOSPHERE_RINGS,
@@ -42,13 +45,14 @@ import {
   spinRotation,
 } from "../Core/geo";
 import type { Quat, Vec3 } from "../Core/geo";
-import { COASTLINE_110M } from "../Data/coastline110m";
+import { COASTLINE_50M } from "../Data/coastline50m";
 import { Interactable } from "SpectaclesInteractionKit.lspkg/Components/Interaction/Interactable/Interactable";
 import { InteractableManipulation } from "SpectaclesInteractionKit.lspkg/Components/Interaction/InteractableManipulation/InteractableManipulation";
 import WorldCameraFinderProvider from "SpectaclesInteractionKit.lspkg/Providers/CameraProvider/WorldCameraFinderProvider";
 import {
   createEmptyObject,
   createMeshObject,
+  fromLensQuat,
   fromLensVec,
   glowMaterial,
   tintedMaterial,
@@ -57,6 +61,7 @@ import {
   triangleRenderMesh,
 } from "./LensRender";
 import { PanelButton, createBackplate, createText, setText } from "./LensUi";
+import { MapLabels } from "./MapLabels";
 import { EmergencyOverlay } from "./EmergencyOverlay";
 import type { GlobeContext } from "./EmergencyOverlay";
 
@@ -74,6 +79,19 @@ const BUTTON_GAP_CM = 1.8;
 const LINE_GAP_CM = 0.25;
 const MUTED: [number, number, number] = [0.62, 0.72, 0.82];
 const BODY: [number, number, number] = [0.92, 0.96, 1.0];
+
+// Plate boundaries: a quiet violet, distinct from the coastline (blue-white) and dimmer than the
+// quake markers (which stay the only saturated colour). Subduction zones a touch brighter and
+// carry trench barbs; every other class is a plain thin line.
+const PLATE_LINE_COLOR: [number, number, number] = [0.52, 0.44, 0.66];
+const SUBDUCTION_COLOR: [number, number, number] = [0.74, 0.5, 0.78];
+const PLATE_LINE_WIDTH_FRACTION = 0.006;
+const SUBDUCTION_WIDTH_FRACTION = 0.008;
+const OTHER_BOUNDARY_CLASSES: PlateBoundaryClass[] = ["OSR", "OTF", "CTF", "CRB", "CCB", "OCB"];
+/** Data credit shown in the panel legend wherever the plate boundaries are drawn (done criterion 5). */
+const PLATE_CREDIT = "Plates: PB2002, Bird 2003; GeoJSON by Hugo Ahlenius, Nordpil and Peter Bird";
+/** How often the label layout is recomputed (seconds): a few times a second, not every frame. */
+const LABEL_RELAYOUT_INTERVAL_S = 0.2;
 
 /** Height of `lines` lines of world-space text at `size` (em = size / 43.886 cm, 1.25 leading). */
 function textHeightCm(size: number, lines: number): number {
@@ -143,6 +161,8 @@ export class QuakeGlobeLens extends BaseScriptComponent {
   private globeInteractable!: Interactable;
   private manipulation!: InteractableManipulation;
   private overlay!: EmergencyOverlay;
+  private mapLabels!: MapLabels;
+  private sinceLabelLayout = LABEL_RELAYOUT_INTERVAL_S;
   private highlight!: SceneObject;
   private highlightVisual!: RenderMeshVisual;
   private stemVisual!: RenderMeshVisual;
@@ -170,6 +190,7 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.buildGlobe();
     this.overlay = new EmergencyOverlay(this.makeGlobeContext());
     this.overlay.build();
+    this.mapLabels = new MapLabels(this.sceneObject, this.font ? this.font : undefined);
     this.buildPanel();
     // Hidden until placed: the root starts wherever it was left in the scene, often at the
     // camera, and the globe should not flash up against the user's face.
@@ -181,7 +202,10 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.createEvent("LateUpdateEvent").bind(() => {
       this.updatePanelPose();
       this.updateAtmosphere();
-      if (this.placed) this.overlay.updatePoses();
+      if (this.placed) {
+        this.overlay.updatePoses();
+        this.updateLabels(getDeltaTime());
+      }
     });
   }
 
@@ -200,9 +224,10 @@ export class QuakeGlobeLens extends BaseScriptComponent {
       createMeshObject("Grid " + i, this.content, triangleRenderMesh(m), gridMaterial),
     );
     const coastMaterial = tintedMaterial(base, COASTLINE_COLOR);
-    polylinesToRibbonMeshes(COASTLINE_110M, R * LINE_RADIUS_FACTOR, R * GEOMETRY.coastlineWidthFraction).forEach((m, i) =>
+    polylinesToRibbonMeshes(COASTLINE_50M, R * LINE_RADIUS_FACTOR, R * GEOMETRY.coastlineWidthFraction).forEach((m, i) =>
       createMeshObject("Coastline " + i, this.content, triangleRenderMesh(m), coastMaterial),
     );
+    this.buildPlateBoundaries(R, base);
     // Faint inner grid at the depth where the deepest quakes stop: a ruler for slabs.
     const innerRadius = depthToRadius(INNER_GRID_DEPTH_KM, R, SETTINGS.depthExaggeration);
     const innerMaterial = tintedMaterial(base, INNER_GRID_COLOR);
@@ -241,6 +266,30 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.manipulation = this.handle.createComponent(InteractableManipulation.getTypeName()) as InteractableManipulation;
     this.manipulation.minimumScaleFactor = 0.4;
     this.manipulation.maximumScaleFactor = 3;
+  }
+
+  /**
+   * Plate boundaries (PB2002, Bird 2003): subduction zones as a brighter line with trench barbs on
+   * the overriding-plate side, every other class as a plain thin line. Ribbons face outward and the
+   * materials cull back faces, so the far side is dropped like the coastline. polylinesToRibbonMeshes
+   * already packs the many runs into a handful of 16-bit meshes, and the barbs are one more, so the
+   * whole layer is a few draw calls. Colours stay quiet (no dark, additive display); the credit rides
+   * in the panel legend (done criteria 2 and 5).
+   */
+  private buildPlateBoundaries(R: number, base: Material): void {
+    const parent = createEmptyObject("Plate boundaries", this.content);
+    const radius = R * LINE_RADIUS_FACTOR;
+
+    const otherMaterial = tintedMaterial(base, PLATE_LINE_COLOR);
+    polylinesToRibbonMeshes(boundaryPolylines(OTHER_BOUNDARY_CLASSES), radius, R * PLATE_LINE_WIDTH_FRACTION).forEach((m, i) =>
+      createMeshObject("Plate line " + i, parent, triangleRenderMesh(m), otherMaterial),
+    );
+
+    const subMaterial = tintedMaterial(base, SUBDUCTION_COLOR);
+    polylinesToRibbonMeshes(boundaryPolylines(["SUB"]), radius, R * SUBDUCTION_WIDTH_FRACTION).forEach((m, i) =>
+      createMeshObject("Plate subduction line " + i, parent, triangleRenderMesh(m), subMaterial),
+    );
+    createMeshObject("Plate subduction barbs", parent, triangleRenderMesh(buildSubductionBarbs(radius)), subMaterial);
   }
 
   /** The shared globe objects the alert overlay needs; it builds and owns everything else. */
@@ -283,8 +332,9 @@ export class QuakeGlobeLens extends BaseScriptComponent {
       count: line("Count", 40, BODY, 1),
       activity: line("Activity", 40, BODY, 2),
       detail: line("Detail", 40, BODY, 3),
-      // Two legend lines (they name the current view's glow window) and the data credit.
-      legend: line("Legend", 36, MUTED, 3),
+      // Two legend lines (they name the current view's glow window), the USGS data credit, and
+      // the plate-boundary credit, which wraps to two lines.
+      legend: line("Legend", 36, MUTED, 5),
     };
 
     // Row 1: the three time windows. Row 2: Strongest and Spin.
@@ -532,9 +582,11 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     setText(this.texts.count, vm.countLine);
     setText(this.texts.activity, vm.activityText);
     setText(this.texts.detail, vm.detailText);
-    setText(this.texts.legend, legendText(vm.view.id) + "\n" + FOOTER_TEXT);
+    setText(this.texts.legend, legendText(vm.view.id) + "\n" + FOOTER_TEXT + "\n" + PLATE_CREDIT);
     if (vm.markersVersion !== this.renderedVersion) {
       this.rebuildMarkers(vm.markers);
+      // Name the countries around the strongest quakes, even on a small globe.
+      this.mapLabels.setBoosted(vm.markers);
       this.renderedVersion = vm.markersVersion;
     }
     // The newest set changes as time passes, not only when data arrives.
@@ -665,5 +717,32 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     const t = this.atmosphere.getTransform();
     t.setLocalRotation(toLensQuat(alignmentRotation(toViewer)));
     t.setLocalScale(new vec3(s, s, s));
+  }
+
+  // ---------------------------------------------------------------- labels
+
+  /**
+   * Fade the labels every frame and recompute their layout a few times a second. The core layout
+   * decides which continent, ocean, sea and country names to show and where (Core/labels); this
+   * only hands it the live view and applies the result. Growing the globe grows its apparent disc,
+   * which raises the layout's label budget, so more names appear.
+   */
+  private updateLabels(dt: number): void {
+    this.mapLabels.ease(dt);
+    this.sinceLabelLayout += dt;
+    if (this.sinceLabelLayout < LABEL_RELAYOUT_INTERVAL_S) return;
+    this.mapLabels.relayout(this.labelView(), this.overlay.home, this.selectedId !== "", this.sinceLabelLayout);
+    this.sinceLabelLayout = 0;
+  }
+
+  /** The current globe in the world frame the core label layout works in. */
+  private labelView(): LabelView {
+    const handleT = this.handle.getTransform();
+    return {
+      globeCentre: fromLensVec(handleT.getWorldPosition()),
+      globeRotation: fromLensQuat(this.content.getTransform().getWorldRotation()),
+      globeRadius: this.globeRadiusCm * handleT.getWorldScale().x,
+      eye: fromLensVec(this.cameraTransform().getWorldPosition()),
+    };
   }
 }

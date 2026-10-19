@@ -8,6 +8,7 @@
 import type { Quake } from "../Core/usgs";
 import { EARTH_RADIUS_KM, geoToCartesian } from "../Core/geo";
 import { formatAge } from "../Core/freshness";
+import { nearestBoundary } from "../Core/plates";
 
 const DEG = Math.PI / 180;
 const RAD = 180 / Math.PI;
@@ -77,20 +78,23 @@ export function formatDistanceKm(km: number): string {
 
 /**
  * Body text for the quake details card (done criterion 2): coordinates, magnitude, depth,
- * time and place. `timeLabel` overrides the relative age for a fixed historical event (the
- * simulated quake); otherwise the age is shown, like the rest of the app. The nearest plate
- * boundary is a placeholder until the plate-boundary data module arrives in the next pass.
+ * time and place, and the nearest plate boundary. `timeLabel` overrides the relative age for a
+ * fixed historical event (the simulated quake); otherwise the age is shown, like the rest of the
+ * app. The boundary comes from the unit-tested PB2002 lookup (Core/plates.nearestBoundary) and
+ * reads like "Subduction zone, Pacific and Okhotsk plates, 40 km away".
  */
 export function quakeCardText(q: Quake, nowMs: number, timeLabel?: string): string {
   const depth = Math.max(0, Math.round(q.depthKm));
   const where = q.place.length > 0 ? q.place : "Unnamed location";
   const when = timeLabel !== undefined ? timeLabel : formatAge(nowMs - q.timeMs);
+  const nb = nearestBoundary(q.lat, q.lon);
+  const boundary = nb ? "Nearest boundary: " + nb.text : "Nearest boundary: none nearby";
   return (
     "M " + q.mag.toFixed(1) + "    depth " + depth + " km\n" +
     formatLat(q.lat) + ",  " + formatLon(q.lon) + "\n" +
     where + "\n" +
     when + "\n" +
-    "Nearest plate boundary: added with plate data"
+    boundary
   );
 }
 

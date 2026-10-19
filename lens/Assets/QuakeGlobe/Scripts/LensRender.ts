@@ -103,3 +103,7 @@ export function toLensVec(v: Vec3): vec3 {
 export function fromLensVec(v: vec3): Vec3 {
   return { x: v.x, y: v.y, z: v.z };
 }
+
+export function fromLensQuat(q: quat): Quat {
+  return { x: q.x, y: q.y, z: q.z, w: q.w };
+}

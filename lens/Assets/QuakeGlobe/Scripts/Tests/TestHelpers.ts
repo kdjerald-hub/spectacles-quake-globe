@@ -74,6 +74,42 @@ export function textUnderParent(name: string, parentName: string): string | unde
   return undefined;
 }
 
+/** How many "Map Label" pool objects exist in the scene, visible or not (done criterion 1). */
+export function labelPoolSize(): number {
+  return findSceneObjectsByName("Map Label").length;
+}
+
+/** How many "Map Label" pool objects are enabled and currently carry non-empty text. */
+export function visibleLabelCount(): number {
+  const objs = findSceneObjectsByName("Map Label");
+  let n = 0;
+  for (const o of objs) {
+    if (isNull(o) || !o.enabled) continue;
+    const t = o.getComponent("Component.Text") as Text;
+    if (!isNull(t) && t.text.length > 0) n++;
+  }
+  return n;
+}
+
+/** True when a SceneObject named `name` carries a RenderMeshVisual with a mesh assigned. */
+export function hasMesh(name: string): boolean {
+  const obj = findSceneObjectByName(name);
+  if (isNull(obj)) return false;
+  const v = obj.getComponent("Component.RenderMeshVisual") as RenderMeshVisual;
+  return !isNull(v) && !isNull(v.mesh);
+}
+
+/**
+ * Set the globe handle's local scale, standing in for the two-hand resize gesture. Growing the
+ * globe raises the apparent disc and so the label budget. Returns false if the handle is absent.
+ */
+export function setGlobeScale(scale: number): boolean {
+  const globe = findSceneObjectByName("Globe");
+  if (isNull(globe)) return false;
+  globe.getTransform().setLocalScale(new vec3(scale, scale, scale));
+  return true;
+}
+
 /** Leading integer of the Panel's Count line ("127 quakes, ..."), or 0 before the feed loads. */
 export function loadedQuakeCount(): number {
   const count = textUnderParent("Count", "Panel");

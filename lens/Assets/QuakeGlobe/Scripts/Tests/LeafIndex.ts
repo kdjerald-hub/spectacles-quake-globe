@@ -8,6 +8,7 @@
 import { scenariosIndex } from "Leaf.lspkg/Scenarios/decorator/ScenarioIndexDecorator";
 import { ScenarioMetadata } from "Leaf.lspkg/Scenarios/scenario/ScenarioMetadata";
 
+import { MapDetailScenario } from "./MapDetailScenario";
 import { QuakeDetailsScenario } from "./QuakeDetailsScenario";
 import { AlertScenario } from "./AlertScenario";
 import { SafeSpotArrowScenario } from "./SafeSpotArrowScenario";
@@ -18,6 +19,7 @@ import { HomeMarkerScenario } from "./HomeMarkerScenario";
 export class LeafIndex extends BaseScriptComponent {
   @scenariosIndex
   static scenarios: ScenarioMetadata[] = [
+    { id: "map_detail", typename: MapDetailScenario.getTypeName() },
     { id: "quake_details", typename: QuakeDetailsScenario.getTypeName() },
     { id: "alert", typename: AlertScenario.getTypeName() },
     { id: "safe_spot_arrow", typename: SafeSpotArrowScenario.getTypeName() },
