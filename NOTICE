@@ -1,0 +1,25 @@
+Live Quake Globe
+Copyright 2026 kdjerald-hub
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This project uses data from:
+
+* U.S. Geological Survey earthquake feeds. Credit: U.S. Geological Survey.
+  USGS-authored data are in the U.S. public domain. The project does not use the
+  USGS logo and is not endorsed by the USGS.
+
+* Natural Earth coastlines and label points (public domain). Made with Natural Earth.
+
+* The PB2002 plate boundary model, in the GeoJSON conversion by Hugo Ahlenius,
+  Nordpil and Peter Bird (https://github.com/fraxen/tectonicplates), under the
+  Open Data Commons Attribution License 1.0
+  (http://opendatacommons.org/licenses/by/1.0/). Original model: Bird, P. (2003),
+  An updated digital model of plate boundaries, Geochemistry, Geophysics,
+  Geosystems 4(3), 1027, doi:10.1029/2001GC000252.
+
+The Lens Studio project in lens/ also contains packages from Snap Inc.
+(Spectacles Interaction Kit, Spectacles UI Kit and LEAF). They stay under Snap's
+own terms and are not covered by this project's licence.
+
+Details and links: docs/DATA_SOURCES.md

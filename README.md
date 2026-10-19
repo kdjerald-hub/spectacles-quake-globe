@@ -111,10 +111,13 @@ Spectacles Base Template and copy `lens/Assets/QuakeGlobe` into it. Step by step
 ## Data
 
 - Earthquakes: USGS real-time GeoJSON feeds. Credit: U.S. Geological Survey. Public domain.
-- Coastlines: Natural Earth 1:110m. Public domain.
+- Coastlines and labels: Natural Earth 1:110m and 1:50m. Public domain.
+- Plate boundaries: PB2002 (Bird 2003), GeoJSON by Hugo Ahlenius, Nordpil and Peter Bird, under
+  the Open Data Commons Attribution License 1.0.
 
 Details and links: [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE); the data credits are in [NOTICE](NOTICE). The Snap packages in
+`lens/Packages` stay under Snap's own terms.

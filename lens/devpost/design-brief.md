@@ -102,6 +102,29 @@ Each one can be checked in Lens Studio's preview.
 - Sending to emergency contacts needs a messaging service and the contacts' consent; simulated only.
 - Feel unproven: comfort over time and real hand tracking.
 
+## Design notes after the first build (2026-10-19, approved by the learner)
+Judging the first build against official guidance changed the alert. Official guidance during
+shaking is to drop, cover and hold on where you are, and phone alerts don't say where the quake is.
+- The alert leads with "Drop, Cover, Hold On" in the biggest text. The safe spot becomes a **cover
+  spot**: cover within a step of where I usually am, such as the table next to me. The arrow and
+  chime show only when the cover spot is out of view.
+- The globe still marks the epicenter and its distance from home at once, but nothing needs a pinch
+  while the ground shakes.
+- When the shaking stops, I pinch "Shaking stopped". Then the card shows the quake details with the
+  nearest plate boundary, the "Send to emergency contacts" button, and "I'm safe".
+- Every alert screen says SIMULATION, the card doesn't copy the look of an official alert, and the
+  video ends with "Not a warning system. Follow official guidance."
+- The demo home is Hualien City. In 2024 the real alert went to Hualien and 11 other counties, but
+  not to Taipei, which still shook at intensity 5-.
+- The magnitude shows both scales: USGS M7.4 (Taiwan's Central Weather Administration: ML 7.2).
+
+Done criteria 4 and 5 now read:
+4. Cover spot: after I mark my cover spot, the alert leads with "Drop, Cover, Hold On" and shows the
+   cover spot, with an arrow and a chime when it is out of view; nothing needs a gesture while
+   shaking.
+5. After the shaking: pinching "Shaking stopped" shows the quake details, and pinching the send button
+   shows "Sent to emergency contacts".
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.

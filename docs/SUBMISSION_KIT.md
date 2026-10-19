@@ -90,7 +90,7 @@ at its true depth (x3), so if you walk around to Tonga or Japan you can see the 
 tracing plates sinking into the mantle. "Strongest" tours the biggest events; a panel says whether
 the last 24 hours were busier than the past month.
 
-Open source (MIT), with a tested platform-independent core and a browser preview:
+Open source (Apache-2.0), with a tested platform-independent core and a browser preview:
 <GitHub link>
 
 I don't have a device of my own yet. If you try it, I'd love to hear how the hand interactions and
