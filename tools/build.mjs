@@ -19,6 +19,10 @@ const sources = [
 
 // Matches the module specifier of static import/export statements that end in ".ts".
 const SPECIFIER = /(\bfrom\s*["'])(\.{1,2}\/[^"']+)\.ts(["'])/g;
+// The Lens folders are capitalised (Core/, Data/) and the repo's are not. Lens Studio's TypeScript
+// rejects an import that differs from the real path only in case (TS1261), so map them.
+const LENS_DIR = /(\bfrom\s*["'])\.\.\/(core|data)\//g;
+const toLensDir = (_m, from, dir) => from + "../" + dir[0].toUpperCase() + dir.slice(1) + "/";
 
 const banner = (src) =>
   "// GENERATED from " + src + " by tools/build.mjs. Edit the source, then run `npm run build`.\n";
@@ -46,7 +50,7 @@ for (const s of sources) {
     const js = stripTypeScriptTypes(code, { mode: "strip" }).replace(SPECIFIER, "$1$2.js$3");
     writeFileSync(join(webOut, name.replace(/\.ts$/, ".js")), banner(srcPath) + js);
 
-    const lensTs = code.replace(SPECIFIER, "$1$2$3");
+    const lensTs = code.replace(SPECIFIER, "$1$2$3").replace(LENS_DIR, toLensDir);
     writeFileSync(join(lensOut, name), banner(srcPath) + lensTs);
     count++;
   }
