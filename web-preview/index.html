@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Quake Globe Preview</title>
+  <style>
+    /* Colours follow the Lens panel: the UI Kit backplate (dark fill, blue hairline border),
+       UI Kit buttons (dark, with a gold outline when toggled on) and the Lens text colours. */
+    :root {
+      --bg: #020305;
+      --panel: rgba(5, 13, 23, 0.85);
+      --border: rgba(107, 168, 255, 0.7);
+      --text: #ebf5ff;
+      --muted: #9eb8d1;
+      --accent: #c7e6ff;
+      --button: rgba(255, 255, 255, 0.07);
+      --button-hover: rgba(255, 255, 255, 0.13);
+      --button-border: rgba(255, 255, 255, 0.14);
+      --on: #e3bd62;
+    }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+    canvas { display: block; }
+    .panel { position: absolute; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 14px; backdrop-filter: blur(6px); max-width: min(440px, calc(100vw - 32px)); }
+    #hud { top: 16px; left: 16px; }
+    #hud h1 { font-size: 15px; margin: 0 0 6px; letter-spacing: 0.02em; color: var(--accent); font-weight: 600; }
+    .line { white-space: pre-line; }
+    .muted { color: var(--muted); font-size: 12.5px; }
+    #controls { bottom: 16px; left: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+    button { background: var(--button); color: var(--text); border: 1px solid var(--button-border);
+      border-radius: 9px; padding: 8px 14px; font: inherit; cursor: pointer;
+      transition: background-color 120ms, border-color 120ms, transform 80ms; }
+    button:hover { background: var(--button-hover); }
+    button:active { transform: scale(0.96); }
+    button.active { border-color: var(--on); color: #fff; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    #legend { bottom: 16px; right: 16px; font-size: 12.5px; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 5px 0 10px; }
+    .dot:first-child { margin-left: 0; }
+    .dot.glow { margin-left: 0; box-shadow: 0 0 5px 2px rgba(230, 242, 255, 0.55); }
+    @media (max-width: 640px) {
+      #legend { top: auto; right: 16px; left: 16px; bottom: 76px; }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="hud" class="panel">
+    <h1>Live Quake Globe <span class="muted">browser preview of the AR Lens</span></h1>
+    <div id="status" class="line muted"></div>
+    <div id="count" class="line"></div>
+    <div id="activity" class="line" style="margin-top:6px"></div>
+    <div id="detail" class="line" style="margin-top:6px"></div>
+  </div>
+  <div id="controls" class="panel"></div>
+  <div id="legend" class="panel"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

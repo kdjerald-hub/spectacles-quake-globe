@@ -1,0 +1,61 @@
+- !<AssetImportMetadata/ade2f081-e05b-4c67-b399-915b2044e04f>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> 5b21fdb9-038b-43d9-a041-d3e564040746
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> 5b21fdb9-038b-43d9-a041-d3e564040746
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 9f1caf84-67e7-4b67-acac-1c2002578340
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/9f1caf84-67e7-4b67-acac-1c2002578340>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  VersionPrerelease: ""
+  UpdateOrder: 0
+  ComponentUid: d822f482-1514-4abe-a67a-695dcbf05ef6
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    baseMaterial: false
+    cameraObject: false
+    distanceCm: false
+    font: false
+    globeRadiusCm: false
+    heightOffsetCm: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - baseMaterial: !<reference.Material> 00000000-0000-0000-0000-000000000000
+      cameraObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      font: !<reference.Font> 00000000-0000-0000-0000-000000000000
+      globeRadiusCm: !<float> 12.000000
+      distanceCm: !<float> 100.000000
+      heightOffsetCm: !<float> 6.000000
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - // @input Asset.Material baseMaterial
+    - // @input SceneObject cameraObject
+    - // @input Asset.Font font
+    - // @input float globeRadiusCm = 12
+    - // @input float distanceCm = 100
+    - // @input float heightOffsetCm = -8
