@@ -57,6 +57,8 @@ import {
   triangleRenderMesh,
 } from "./LensRender";
 import { PanelButton, createBackplate, createText, setText } from "./LensUi";
+import { EmergencyOverlay } from "./EmergencyOverlay";
+import type { GlobeContext } from "./EmergencyOverlay";
 
 const CACHE_PREFIX = "quakeglobe.feed.v1.";
 const CACHE_SAVE_INTERVAL_MS = 30 * 60 * 1000;
@@ -106,6 +108,11 @@ export class QuakeGlobeLens extends BaseScriptComponent {
   @allowUndefined
   font!: Font;
 
+  /** Optional chime played when the simulated alert fires (done criteria 3-4). */
+  @input
+  @allowUndefined
+  chime!: AudioTrackAsset;
+
   @input
   globeRadiusCm: number = 12;
 
@@ -133,6 +140,9 @@ export class QuakeGlobeLens extends BaseScriptComponent {
   private content!: SceneObject;
   private atmosphere!: SceneObject;
   private panel!: SceneObject;
+  private globeInteractable!: Interactable;
+  private manipulation!: InteractableManipulation;
+  private overlay!: EmergencyOverlay;
   private highlight!: SceneObject;
   private highlightVisual!: RenderMeshVisual;
   private stemVisual!: RenderMeshVisual;
@@ -158,6 +168,8 @@ export class QuakeGlobeLens extends BaseScriptComponent {
   onAwake(): void {
     print("Lens Opened: v" + LENS_VERSION);
     this.buildGlobe();
+    this.overlay = new EmergencyOverlay(this.makeGlobeContext());
+    this.overlay.build();
     this.buildPanel();
     // Hidden until placed: the root starts wherever it was left in the scene, often at the
     // camera, and the globe should not flash up against the user's face.
@@ -169,6 +181,7 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.createEvent("LateUpdateEvent").bind(() => {
       this.updatePanelPose();
       this.updateAtmosphere();
+      if (this.placed) this.overlay.updatePoses();
     });
   }
 
@@ -224,10 +237,33 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     sphere.radius = R;
     collider.shape = sphere;
     collider.fitVisual = false;
-    this.handle.createComponent(Interactable.getTypeName());
-    const manipulation = this.handle.createComponent(InteractableManipulation.getTypeName()) as InteractableManipulation;
-    manipulation.minimumScaleFactor = 0.4;
-    manipulation.maximumScaleFactor = 3;
+    this.globeInteractable = this.handle.createComponent(Interactable.getTypeName()) as Interactable;
+    this.manipulation = this.handle.createComponent(InteractableManipulation.getTypeName()) as InteractableManipulation;
+    this.manipulation.minimumScaleFactor = 0.4;
+    this.manipulation.maximumScaleFactor = 3;
+  }
+
+  /** The shared globe objects the alert overlay needs; it builds and owns everything else. */
+  private makeGlobeContext(): GlobeContext {
+    return {
+      root: this.sceneObject,
+      handle: this.handle,
+      content: this.content,
+      globeRadiusCm: this.globeRadiusCm,
+      baseMaterial: this.baseMaterial,
+      font: this.font ? this.font : undefined,
+      chime: this.chime ? this.chime : undefined,
+      cameraTransform: () => this.cameraTransform(),
+      viewerDirectionInGlobe: () => this.viewerDirectionInGlobe(),
+      currentSpin: () => this.current,
+      selectQuakeById: (id: string) => {
+        this.model.selectedId = id;
+        this.render();
+      },
+      setManipulationEnabled: (enabled: boolean) => {
+        this.manipulation.enabled = enabled;
+      },
+    };
   }
 
   private buildPanel(): void {
@@ -268,6 +304,9 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.spinButton = new PanelButton(this.panel, "Spin", new vec3(W / 2 - w2 / 2, row2, 0), w2, h, true, () => this.resumeSpin(), font);
     this.buttons.push(this.spinButton);
 
+    // The alert-overlay controls (Phone alert received, Set home, Set safe spot) live on a
+    // separate card beside the globe (EmergencyOverlay), so this panel stays inside the view.
+
     // Backplate behind everything on the panel, padded around the content.
     const contentBottom = row2 - h / 2;
     const plateHeight = -contentBottom + 2 * PANEL_PADDING_CM;
@@ -282,6 +321,12 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     place.bind(() => this.placeInFront());
     place.reset(0.25); // let the camera pose settle
     for (const b of this.buttons) b.bind();
+    this.overlay.bindButtons();
+    // Route a tap on the globe to the overlay while setting the home point (the overlay turns
+    // manipulation off in that mode, so the tap places a point instead of grabbing the globe).
+    this.globeInteractable.onTriggerEnd.add((e) => {
+      if (this.overlay.currentMode === "home") this.overlay.globeTap(e.interactor.targetHitPosition);
+    });
     this.online = global.deviceInfoSystem.isInternetAvailable();
     global.deviceInfoSystem.onInternetStatusChanged.add((args) => {
       this.online = args.isInternetAvailable;
@@ -302,8 +347,14 @@ export class QuakeGlobeLens extends BaseScriptComponent {
       this.finishedEvents = [];
     }
 
+    this.overlay.update(dt);
+
     let target: Quat;
-    if (this.selectionTarget !== null) {
+    const alertFacing = this.overlay.rotationOverride();
+    if (alertFacing !== null) {
+      // During the alert the globe turns the epicentre toward the viewer and holds.
+      target = alertFacing;
+    } else if (this.selectionTarget !== null) {
       target = this.selectionTarget;
     } else {
       this.spinDeg += SETTINGS.idleSpinDegPerSec * dt;
@@ -501,6 +552,9 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     }
     for (const v of VIEWS) this.viewButtons[v.id].setActive(v.id === vm.view.id);
     this.spinButton.setActive(vm.selected === null);
+    // The details card follows the live selection; the pick targets overlay the strongest quakes.
+    this.overlay.onSelection(vm.selected, Date.now());
+    this.overlay.updatePickTargets(this.model.tour());
   }
 
   private markerOptions(): { globeRadius: number; depthExaggeration: number; baseSize: number } {
@@ -574,8 +628,10 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.placed = true;
     this.handle.enabled = true;
     this.panel.enabled = true;
+    this.overlay.onPlaced();
     this.updatePanelPose();
     this.updateAtmosphere();
+    this.overlay.updatePoses();
   }
 
   /**

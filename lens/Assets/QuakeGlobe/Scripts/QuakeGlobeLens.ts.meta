@@ -30,6 +30,7 @@
   ScriptInputsHidden:
     baseMaterial: false
     cameraObject: false
+    chime: false
     distanceCm: false
     font: false
     globeRadiusCm: false
@@ -46,6 +47,7 @@
     - baseMaterial: !<reference.Material> 00000000-0000-0000-0000-000000000000
       cameraObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       font: !<reference.Font> 00000000-0000-0000-0000-000000000000
+      chime: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
       globeRadiusCm: !<float> 12.000000
       distanceCm: !<float> 100.000000
       heightOffsetCm: !<float> 6.000000
@@ -56,6 +58,7 @@
     - // @input Asset.Material baseMaterial
     - // @input SceneObject cameraObject
     - // @input Asset.Font font
+    - // @input Asset.AudioTrackAsset chime
     - // @input float globeRadiusCm = 12
     - // @input float distanceCm = 100
     - // @input float heightOffsetCm = -8
