@@ -4,16 +4,36 @@
 //
 // The scene is built at runtime by QuakeGlobeLens.ts, so every object below is looked up by name
 // through LEAF's scene utilities (the authored scene graph does not contain them).
+//
+// All waits are by wall-clock time (Leaf's Utils.sleep), not by frame count: the Lens enables its
+// Panel and cards only after placeInFront() runs ~0.25 s after start, and data arrives from the
+// network seconds later, so a fixed number of frames is the wrong unit to wait in.
 
 import { DefaultLeafInteractor } from "Leaf.lspkg/Interactors/interactor/DefaultLeafInteractor";
 import { findInteractableByName } from "Leaf.lspkg/Interactors/InteractableUtils";
-import { findSceneObjectByName, findSceneObjectsByName, nextFrame } from "Leaf.lspkg/Utils/common/Utils";
+import { findSceneObjectByName, findSceneObjectsByName, sleep } from "Leaf.lspkg/Utils/common/Utils";
 
-/** Await `count` render frames. */
-export async function advanceFrames(count: number): Promise<void> {
-  for (let i = 0; i < count; i++) {
-    await nextFrame();
+/** How often to re-check scene state while waiting on a condition. */
+const POLL_MS = 50;
+/** Short settle after a press, to let the resulting enable/disable and text updates land. */
+const SETTLE_MS = 120;
+
+/** Sleep `ms` of wall-clock time. Thin wrapper over Leaf's Utils.sleep so call sites read clearly. */
+export async function wait(ms: number): Promise<void> {
+  await sleep(ms);
+}
+
+/** Poll `predicate` every POLL_MS until it is true or `timeoutMs` of wall-clock time elapses. */
+export async function waitUntil(predicate: () => boolean, timeoutMs: number): Promise<boolean> {
+  let elapsed = 0;
+  while (elapsed < timeoutMs) {
+    if (predicate()) {
+      return true;
+    }
+    await sleep(POLL_MS);
+    elapsed += POLL_MS;
   }
+  return predicate();
 }
 
 /**
@@ -25,15 +45,14 @@ export function objectEnabled(name: string): boolean {
   return !isNull(obj) && obj.enabled;
 }
 
-/** Advance up to `maxFrames`, stopping as soon as `name`'s enabled flag equals `want`. */
-export async function waitForEnabled(name: string, want: boolean, maxFrames = 20): Promise<boolean> {
-  for (let i = 0; i < maxFrames; i++) {
-    if (objectEnabled(name) === want) {
-      return true;
-    }
-    await nextFrame();
-  }
-  return objectEnabled(name) === want;
+/** Wait up to `timeoutMs` (wall-clock), stopping as soon as `name`'s enabled flag equals `want`. */
+export async function waitForEnabled(name: string, want: boolean, timeoutMs = 5000): Promise<boolean> {
+  return waitUntil(() => objectEnabled(name) === want, timeoutMs);
+}
+
+/** True once a SceneObject named `name` carries an Interactable that LEAF can reach (enabled in hierarchy). */
+export function interactableReady(name: string): boolean {
+  return !isNull(findInteractableByName(name, undefined, true));
 }
 
 /**
@@ -55,31 +74,60 @@ export function textUnderParent(name: string, parentName: string): string | unde
   return undefined;
 }
 
-/** Trigger an *enabled* Interactable by its SceneObject name; throws a clear error if absent. */
+/** Leading integer of the Panel's Count line ("127 quakes, ..."), or 0 before the feed loads. */
+export function loadedQuakeCount(): number {
+  const count = textUnderParent("Count", "Panel");
+  if (count === undefined) {
+    return 0;
+  }
+  const match = count.match(/^\s*(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+/** Wait up to `timeoutMs` until the live USGS feed has loaded at least one quake (Count > 0). */
+export async function waitForQuakes(timeoutMs = 15000): Promise<boolean> {
+  return waitUntil(() => loadedQuakeCount() > 0, timeoutMs);
+}
+
+/**
+ * Trigger an *enabled* Interactable by its SceneObject name. Cards and the Panel self-enable only
+ * after the globe is placed, so the target may not be reachable the instant we ask: keep looking
+ * for up to 3 s before failing with a clear error.
+ */
 export async function triggerButton(interactor: DefaultLeafInteractor, name: string): Promise<void> {
+  const ready = await waitUntil(() => interactableReady(name), 3000);
   const target = findInteractableByName(name, undefined, true);
-  if (isNull(target)) {
+  if (!ready || isNull(target)) {
     throw new Error(`Interactable "${name}" not found or not enabled`);
   }
   await interactor.trigger(target);
-  await advanceFrames(2);
+  await sleep(SETTLE_MS);
 }
 
 /**
  * Shared reset run at the start of every scenario, per the done-criteria contract:
- *   1. dismiss any active alert ("Button I'm safe", only while the Alert Card is enabled), then
- *   2. clear any quake selection ("Button Spin", on the always-present Panel).
+ *   1. wait until the Lens has placed its Panel and "Button Spin" is reachable (up to 15 s), then
+ *   2. dismiss any active alert ("Button I'm safe", only while the Alert Card is enabled), then
+ *   3. clear any quake selection ("Button Spin", on the always-present Panel).
  * Leaves the Controls Card active with nothing selected. Scenarios share Lens state, so this
  * guarantees a known baseline regardless of execution order.
+ *
+ * The Lens builds the Panel in onAwake but keeps it disabled until placeInFront() runs ~0.25 s
+ * after start; LEAF only finds interactables that are enabled in the hierarchy. Pressing Spin
+ * before then is what produced `Interactable "Button Spin" not found or not enabled`, so we wait
+ * for it to be reachable before pressing anything.
  */
 export async function resetState(interactor: DefaultLeafInteractor): Promise<void> {
+  const ready = await waitUntil(() => interactableReady("Button Spin"), 15000);
+  if (!ready) {
+    throw new Error('Panel never became ready: "Button Spin" not found or not enabled within 15 s');
+  }
+
   if (objectEnabled("Alert Card")) {
     await triggerButton(interactor, "Button I'm safe");
     await waitForEnabled("Alert Card", false);
   }
   await triggerButton(interactor, "Button Spin");
-  await advanceFrames(2);
-  // The Controls Card self-enables ~0.25 s after the Lens starts (automatic placement). Give it a
-  // moment so the control buttons are present for scenarios that need them.
+  // The Controls Card self-enables with the Panel; by here it should already be up.
   await waitForEnabled("Controls Card", true);
 }

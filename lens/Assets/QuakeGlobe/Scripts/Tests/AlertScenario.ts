@@ -7,7 +7,7 @@ import { Scenario } from "Leaf.lspkg/Scenarios/scenario/Scenario";
 import { ScenarioConfig } from "Leaf.lspkg/Scenarios/scenario/ScenarioConfig";
 import { expect } from "Leaf.lspkg/Utils/common/Expect";
 import { DefaultLeafInteractor } from "Leaf.lspkg/Interactors/interactor/DefaultLeafInteractor";
-import { advanceFrames, objectEnabled, resetState, textUnderParent, triggerButton, waitForEnabled } from "./TestHelpers";
+import { objectEnabled, resetState, textUnderParent, triggerButton, waitForEnabled } from "./TestHelpers";
 
 @component
 export class AlertScenario extends Scenario {
@@ -18,7 +18,6 @@ export class AlertScenario extends Scenario {
     // Fire the simulated phone alert.
     await triggerButton(interactor, "Button Phone alert received");
     await waitForEnabled("Alert Card", true);
-    await advanceFrames(2);
 
     expect(objectEnabled("Alert Card"), "Alert Card should be enabled during an alert").toBe(true);
     expect(

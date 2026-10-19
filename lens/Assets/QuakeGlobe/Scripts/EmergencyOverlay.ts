@@ -335,10 +335,14 @@ export class EmergencyOverlay {
       ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
     }
 
-    // Safe-spot placement plane faces the user while setting the safe spot.
+    // Safe-spot placement plane catches a room pinch while setting the safe spot. Keep it beyond
+    // the side cards (which sit CARD_BACK_CM behind the globe) so it never occludes their buttons:
+    // a pinch aimed at a card hits the nearer card, while a pinch into open space still lands here.
+    // (At 110 cm it sat in front of the cards and swallowed the ray to "Phone alert received".)
     if (this.mode === "safe") {
-      const lookDir = cam.forward.uniformScale(-1);
-      const planePos = camPos.add(lookDir.uniformScale(110));
+      const lookDir = cam.forward.uniformScale(-1).normalize();
+      const planeDist = camPos.distance(globeCenter) + CARD_BACK_CM + 60;
+      const planePos = camPos.add(lookDir.uniformScale(planeDist));
       const pt = this.placementPlane.getTransform();
       pt.setWorldPosition(planePos);
       pt.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(planePos)))));
@@ -623,7 +627,10 @@ export class EmergencyOverlay {
   }
 
   private playChime(): void {
-    if (this.audio !== null && this.audio.audioTrack) this.audio.play(1);
+    if (this.audio !== null && this.audio.audioTrack) {
+      this.audio.play(1);
+      print("Alert chime played");
+    }
   }
 
   private scaledColor(rgb: [number, number, number], k: number): vec4 {

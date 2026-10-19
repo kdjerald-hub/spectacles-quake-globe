@@ -7,13 +7,18 @@ import { Scenario } from "Leaf.lspkg/Scenarios/scenario/Scenario";
 import { ScenarioConfig } from "Leaf.lspkg/Scenarios/scenario/ScenarioConfig";
 import { expect } from "Leaf.lspkg/Utils/common/Expect";
 import { DefaultLeafInteractor } from "Leaf.lspkg/Interactors/interactor/DefaultLeafInteractor";
-import { objectEnabled, resetState, textUnderParent, triggerButton, waitForEnabled } from "./TestHelpers";
+import { objectEnabled, resetState, textUnderParent, triggerButton, waitForEnabled, waitForQuakes } from "./TestHelpers";
 
 @component
 export class QuakeDetailsScenario extends Scenario {
   async run(_config?: ScenarioConfig): Promise<void> {
     const interactor = new DefaultLeafInteractor();
     await resetState(interactor);
+
+    // Strongest tours the live USGS quakes, so wait until the feed has loaded (Count shows a
+    // number above zero) before pressing it, or there would be nothing to select.
+    const loaded = await waitForQuakes();
+    expect(loaded, "Live quakes should load (Count > 0) before pressing Strongest").toBe(true);
 
     // Select the next-strongest live quake -> the Details Card appears.
     await triggerButton(interactor, "Button Strongest");
