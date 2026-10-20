@@ -101,6 +101,7 @@ export class PanelButton {
     toggle: boolean,
     onPress: () => void,
     font?: Font,
+    labelSize = 40,
   ) {
     this.onPress = onPress;
     this.toggle = toggle;
@@ -121,7 +122,7 @@ export class PanelButton {
     }
     this.button.initialize();
     const caption = createText(this.sceneObject, "Label", new vec3(0, 0, BUTTON_DEPTH_CM / 2 + 0.05), {
-      size: 40,
+      size: labelSize,
       color: [1, 1, 1],
       widthCm,
       heightCm,

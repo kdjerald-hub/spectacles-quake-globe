@@ -18,6 +18,13 @@ import { createEmptyObject } from "./LensRender";
 
 const LINE_GAP_CM = 0.25;
 const PADDING_CM = 1.2;
+/**
+ * Side-card buttons are full width (one per row) so no label wraps - "Send to emergency contacts"
+ * fit in a half-width button before. A taller button also reads better from a standing distance.
+ */
+const SIDE_BUTTON_H = 4.4;
+/** Vertical gap between stacked full-width buttons. */
+const BUTTON_STACK_GAP = 1.4;
 const BODY: [number, number, number] = [0.92, 0.96, 1.0];
 const MUTED: [number, number, number] = [0.62, 0.72, 0.82];
 const TITLE: [number, number, number] = [0.78, 0.9, 1.0];
@@ -28,6 +35,41 @@ const GUIDE: [number, number, number] = [1.0, 0.95, 0.85];
 /** Height of `lines` lines of world-space text at `size` (matches LensUi/QuakeGlobeLens). */
 function textHeightCm(size: number, lines: number): number {
   return (size / 43.886) * 1.25 * lines;
+}
+
+/**
+ * Conservative width of one character as a fraction of the text size, in centimetres
+ * (cm = CHAR_W * size * chars). Deliberately a touch wide so a wrap we compute here never falls
+ * short of what the font actually does, which would overflow the lines we reserve for it.
+ */
+const CHAR_W = 0.014;
+
+/**
+ * Greedily wrap `text` so no line exceeds `maxChars`. Used for the big headline: it is shown about
+ * twice the body size, so on a narrow card "Drop, Cover, Hold On" must break across lines - wrapping
+ * it here (and reserving exactly the resulting line count) keeps it from spilling over the content
+ * below, whatever the font's exact metrics.
+ */
+function wrapToLines(text: string, maxChars: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const candidate = cur.length === 0 ? w : cur + " " + w;
+    if (candidate.length > maxChars && cur.length > 0) {
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = candidate;
+    }
+  }
+  if (cur.length > 0) lines.push(cur);
+  return lines.length > 0 ? lines : [text];
+}
+
+/** Characters that fit on one line of `size` text across `widthCm`, by the conservative CHAR_W. */
+function charsPerLine(widthCm: number, size: number): number {
+  return Math.max(4, Math.floor(widthCm / (CHAR_W * size)));
 }
 
 /** A stack of text lines and buttons with a backplate behind them; the Lens poses the root. */
@@ -102,13 +144,13 @@ export class DetailsCard extends CardBase {
 
   constructor(parent: SceneObject, widthCm: number, onClose: () => void, font?: Font) {
     super(parent, "Details Card", widthCm, font);
-    this.title = this.line("Title", 44, TITLE, 1);
+    this.title = this.line("Title", 50, TITLE, 1);
     this.title.text = "Quake details";
     // Seven lines: magnitude/depth, coordinates, place (may wrap), time, and the nearest plate
     // boundary (which can wrap to two lines).
-    this.body = this.line("Body", 38, BODY, 7);
+    this.body = this.line("Body", 44, BODY, 7);
     this.gap(0.6);
-    const h = 3.2;
+    const h = SIDE_BUTTON_H;
     const row = this.y - h / 2;
     this.closeButton = new PanelButton(this.root, "Close", new vec3(0, row, 0), widthCm, h, false, onClose, font);
     this.buttons.push(this.closeButton);
@@ -131,6 +173,7 @@ export class DetailsCard extends CardBase {
  * setConfirmHomeVisible(true) from the globe-tap handler, so only "Set home" shows to start with.
  */
 export class ControlsCard extends CardBase {
+  private readonly setHomeButton: PanelButton;
   private readonly confirmHomeButton: PanelButton;
 
   constructor(
@@ -142,18 +185,20 @@ export class ControlsCard extends CardBase {
   ) {
     super(parent, "Controls Card", widthCm, font);
     const spot = spotLabel.toLowerCase();
-    this.line("Title", 40, TITLE, 1).text = "Earthquake alert";
-    this.line("Hint", 32, MUTED, 2).text = "Mark home and a " + spot + ", then fire the simulated alert.";
+    this.line("Title", 48, TITLE, 1).text = "Earthquake alert";
+    this.line("Hint", 36, MUTED, 2).text = "Mark home and a " + spot + ", then fire the simulated alert.";
     this.gap(0.5);
-    const h = 3.6;
-    const gapY = 1.4;
-    const gapX = 1.4;
-    const w2 = (widthCm - gapX) / 2;
+    const h = SIDE_BUTTON_H;
+    const gapY = BUTTON_STACK_GAP;
     let row = this.y - h / 2;
     this.add(new PanelButton(this.root, "Phone alert received", new vec3(0, row, 0), widthCm, h, false, handlers.onAlert, font));
     row -= h + gapY;
-    this.add(new PanelButton(this.root, "Set home", new vec3(-widthCm / 2 + w2 / 2, row, 0), w2, h, false, handlers.onSetHome, font));
-    this.confirmHomeButton = new PanelButton(this.root, "Set as home", new vec3(widthCm / 2 - w2 / 2, row, 0), w2, h, false, handlers.onConfirmHome, font);
+    // "Set home" and "Set as home" share one full-width row: exactly one shows at a time
+    // (setConfirmHomeVisible), so the card stays full width with no empty slot. "Set home" enters
+    // set-home mode; once a point on the globe is picked the Lens swaps in "Set as home" to confirm.
+    this.setHomeButton = new PanelButton(this.root, "Set home", new vec3(0, row, 0), widthCm, h, false, handlers.onSetHome, font);
+    this.add(this.setHomeButton);
+    this.confirmHomeButton = new PanelButton(this.root, "Set as home", new vec3(0, row, 0), widthCm, h, false, handlers.onConfirmHome, font);
     this.add(this.confirmHomeButton);
     row -= h + gapY;
     this.add(new PanelButton(this.root, "Set " + spot, new vec3(0, row, 0), widthCm, h, false, handlers.onSetCover, font));
@@ -166,9 +211,13 @@ export class ControlsCard extends CardBase {
     this.buttons.push(b);
   }
 
-  /** "Set as home" appears only once a point on the globe has been picked (design brief). */
+  /**
+   * "Set as home" appears only once a point on the globe has been picked (design brief). It shares a
+   * row with "Set home", so showing one hides the other.
+   */
   setConfirmHomeVisible(visible: boolean): void {
     if (this.confirmHomeButton.sceneObject.enabled !== visible) this.confirmHomeButton.sceneObject.enabled = visible;
+    if (this.setHomeButton.sceneObject.enabled === visible) this.setHomeButton.sceneObject.enabled = !visible;
   }
 }
 
@@ -186,16 +235,20 @@ class AlertDuringPage extends CardBase {
     font?: Font,
   ) {
     super(parent, "Alert During", widthCm, font);
-    // The headline is the biggest text and leads the card.
-    this.line("Headline", 52, GUIDE, 1, true).text = opts.headline;
-    this.gap(0.35);
-    this.line("During", 40, BODY, Math.max(1, opts.during.length)).text = opts.during.join("\n");
-    this.gap(0.2);
-    this.distanceText = this.line("Distance", 40, WARN, 1);
-    this.line("Sim note", 34, WARN, 1).text = opts.simNote;
-    this.line("Source", 30, MUTED, 2).text = opts.source;
+    // The headline is by far the biggest text and leads the card: about twice the body size. On this
+    // narrow card it wraps to a few short lines ("Drop," / "Cover," / "Hold On"); reserve exactly the
+    // wrapped line count so it reads at a glance without spilling into the content below.
+    const headlineSize = 104;
+    const headlineLines = wrapToLines(opts.headline, charsPerLine(widthCm, headlineSize));
+    this.line("Headline", headlineSize, GUIDE, headlineLines.length, true).text = headlineLines.join("\n");
+    this.gap(0.5);
+    this.line("During", 46, BODY, Math.max(1, opts.during.length)).text = opts.during.join("\n");
+    this.gap(0.25);
+    this.distanceText = this.line("Distance", 50, WARN, 1);
+    this.line("Sim note", 42, WARN, 1).text = opts.simNote;
+    this.line("Source", 36, MUTED, 2).text = opts.source;
     this.gap(0.6);
-    const h = 3.6;
+    const h = SIDE_BUTTON_H;
     const row = this.y - h / 2;
     this.advanceButton = new PanelButton(this.root, opts.advanceLabel, new vec3(0, row, 0), widthCm, h, false, onAdvance, font);
     this.buttons.push(this.advanceButton);
@@ -225,23 +278,25 @@ class AlertAfterPage extends CardBase {
     font?: Font,
   ) {
     super(parent, "Alert After", widthCm, font);
-    this.line("Title", 44, TITLE, 1).text = opts.title;
-    this.line("Sim note", 32, WARN, 1).text = opts.simNote;
+    this.line("Title", 50, TITLE, 1).text = opts.title;
+    this.line("Sim note", 42, WARN, 1).text = opts.simNote;
     this.gap(0.3);
     // Five detail items: magnitude (both scales), depth, local time, place, nearest boundary; the
-    // place and the boundary can each wrap, so reserve seven lines.
-    this.detailsText = this.line("Details", 36, BODY, 7);
+    // place and the boundary can each wrap, so reserve seven lines. This dense block stays a little
+    // smaller than the headline/body so it still fits the seven lines on a narrow card.
+    this.detailsText = this.line("Details", 38, BODY, 7);
     this.gap(0.2);
-    this.line("After", 38, GUIDE, Math.max(1, opts.after.length) + 1).text = opts.after.join("\n");
-    this.line("Source", 30, MUTED, 2).text = opts.source;
-    this.statusText = this.line("Status", 36, WARN, 2);
+    this.line("After", 42, GUIDE, Math.max(1, opts.after.length) + 1).text = opts.after.join("\n");
+    this.line("Source", 36, MUTED, 2).text = opts.source;
+    this.statusText = this.line("Status", 42, WARN, 2);
     this.gap(0.5);
-    const h = 3.6;
-    const gapX = 1.6;
-    const w = (widthCm - gapX) / 2;
-    const row = this.y - h / 2;
-    this.sendButton = new PanelButton(this.root, opts.sendLabel, new vec3(-widthCm / 2 + w / 2, row, 0), w, h, false, onSend, font);
-    this.safeButton = new PanelButton(this.root, opts.safeLabel, new vec3(widthCm / 2 - w / 2, row, 0), w, h, false, onSafe, font);
+    // Both buttons are full width, one per row, so neither label wraps ("Send to emergency contacts"
+    // used to wrap in a half-width button).
+    const h = SIDE_BUTTON_H;
+    let row = this.y - h / 2;
+    this.sendButton = new PanelButton(this.root, opts.sendLabel, new vec3(0, row, 0), widthCm, h, false, onSend, font);
+    row -= h + BUTTON_STACK_GAP;
+    this.safeButton = new PanelButton(this.root, opts.safeLabel, new vec3(0, row, 0), widthCm, h, false, onSafe, font);
     this.buttons.push(this.sendButton, this.safeButton);
     this.y = row - h / 2;
     this.finishPlate();

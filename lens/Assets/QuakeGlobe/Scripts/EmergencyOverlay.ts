@@ -65,6 +65,7 @@ import {
   quakeCardText,
 } from "./Emergency";
 import { Interactable } from "SpectaclesInteractionKit.lspkg/Components/Interaction/Interactable/Interactable";
+import { SIK } from "SpectaclesInteractionKit.lspkg/SIK";
 
 export interface GlobeContext {
   root: SceneObject;
@@ -85,13 +86,14 @@ type Mode = "normal" | "home" | "cover";
 
 const CARD_WIDTH_CM = 16;
 /**
- * Side cards sit well behind the globe's plane. On the narrow SPECS display there is little room
- * next to a 24 cm globe at 1 m; the extra depth shrinks the card's apparent width enough to fit the
- * whole card between the globe's silhouette and the edge of the view. The inner edge is held clear
- * of the globe by angle (see updatePoses), so the push-back no longer slides the card behind the
- * globe's silhouette (which is what hid "Set as home" in the first build).
+ * Side cards sit a little behind the globe's plane. The visible display is narrow: with a 24 cm globe
+ * at 1 m there is only ~6 degrees of view to each side of the globe's silhouette, so a card cannot be
+ * made much wider or brought much nearer without its outer edge sliding off the display (verified in
+ * the SPECS 27 Preview from the default viewpoint pitched down ~10 degrees). The readability comes
+ * from larger type and full-width buttons rather than from a bigger card. The inner edge is held clear
+ * of the globe by angle (see updatePoses), so the depth never slides the card behind the silhouette.
  */
-const CARD_BACK_CM = 55;
+const CARD_BACK_CM = 48;
 /**
  * How far, in viewing angle, a card's inner edge clears the globe's silhouette. Measured from the
  * viewer, so it holds regardless of how far the card is pushed back or how large the globe is.
@@ -107,6 +109,10 @@ const PICK_SLOTS = 12;
 const PICK_RADIUS_FACTOR = 1.03;
 /** Half-angle of the "comfortably in view" cone; the arrow shows when the cover spot is outside it. */
 const IN_VIEW_HALF_COS = Math.cos((26 * Math.PI) / 180);
+/** How far the world-query ray reaches when probing for the real surface under the user's pinch (cm). */
+const PROBE_RANGE_CM = 600;
+/** A world-query hit counts as current for this long, so a pinch commits the surface just probed (s). */
+const PROBE_FRESH_S = 0.5;
 
 function buildArrowMesh(size: number): TriangleMesh {
   const pts: [number, number][] = [[1.5, 0], [-0.8, 0.9], [-0.8, -0.9]];
@@ -128,6 +134,15 @@ export class EmergencyOverlay {
   private homeLatLon = { lat: DEFAULT_HOME.lat, lon: DEFAULT_HOME.lon };
   private pendingHome = { lat: DEFAULT_HOME.lat, lon: DEFAULT_HOME.lon };
   private coverSpotWorld: vec3 | null = null;
+  /** Surface normal at the cover spot, when it was placed on a real surface; null = flat (upright). */
+  private coverSpotNormal: vec3 | null = null;
+  /** World-query hit-test session (LensStudio:WorldQueryModule), created lazily when first needed. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private hitSession: any = null;
+  private hitSessionTried = false;
+  private lastProbeHit: { position: vec3; normal: vec3 } | null = null;
+  private lastProbeElapsed = -999;
+  private lastProbePrintElapsed = -999;
   private alertActive = false;
   private stage: AlertStage = "during";
   private sentToContacts = false;
@@ -314,6 +329,9 @@ export class EmergencyOverlay {
 
   update(dt: number): void {
     this.elapsed += dt;
+    // While setting the cover spot, probe the real surface the user is pointing at so the marker
+    // previews where it will rest; a pinch (roomTap) commits whatever was last probed.
+    if (this.mode === "cover") this.probeSurface();
     if (this.alertActive) {
       this.epicenterRingMaterial.mainPass.baseColor = this.scaledColor(EPICENTER_COLOR, pulse(this.elapsed, EPICENTER_PULSE));
     }
@@ -577,24 +595,40 @@ export class EmergencyOverlay {
   enterCoverMode(): void {
     if (this.alertActive) return;
     this.setMode("cover");
+    this.ensureHitSession();
+    this.lastProbeHit = null;
     const cam = this.ctx.cameraTransform();
     const camPos = cam.getWorldPosition();
     // Seed a spot off to the side at floor height, so the arrow has something to point to even
-    // without a room pinch; a pinch on the placement plane moves it (roomTap).
+    // without a pinch; pointing at a surface moves it (probeSurface) and a pinch commits (roomTap).
     const floorY = camPos.y - 120;
     const seed = camPos.add(cam.right.uniformScale(150));
     this.coverSpotWorld = new vec3(seed.x, floorY, seed.z);
+    this.coverSpotNormal = null;
     this.placeCoverSpot();
     this.placementPlane.enabled = true;
-    this.showHint("Pinch in front of you to place your cover spot", 0);
+    this.showHint("Point at a table or the floor and pinch to place your cover spot", 0);
   }
 
-  /** Called by the Lens when the placement plane is tapped in cover mode. */
+  /**
+   * Called by the Lens when the placement plane is tapped in cover mode. If the world-query probe
+   * found a real surface a moment ago, commit the cover spot there (resting on that surface);
+   * otherwise fall back to the placement plane at floor height (upright), as before.
+   */
   roomTap(hit: vec3 | null): void {
     if (this.mode !== "cover") return;
     const cam = this.ctx.cameraTransform();
     const floorY = cam.getWorldPosition().y - 120;
-    if (hit !== null) this.coverSpotWorld = new vec3(hit.x, floorY, hit.z);
+    const probed = this.lastProbeHit !== null && this.elapsed - this.lastProbeElapsed < PROBE_FRESH_S;
+    if (probed) {
+      this.coverSpotWorld = this.lastProbeHit!.position;
+      this.coverSpotNormal = this.lastProbeHit!.normal;
+      print("Cover spot placed on a real surface (world-query hit)");
+    } else if (hit !== null) {
+      this.coverSpotWorld = new vec3(hit.x, floorY, hit.z);
+      this.coverSpotNormal = null;
+      print("Cover spot placed on the fallback placement plane (no surface hit)");
+    }
     this.placeCoverSpot();
     this.placementPlane.enabled = false;
     this.setMode("normal");
@@ -689,8 +723,73 @@ export class EmergencyOverlay {
 
   private placeCoverSpot(): void {
     if (this.coverSpotWorld === null) return;
-    this.coverSpotRoot.getTransform().setWorldPosition(this.coverSpotWorld);
+    const t = this.coverSpotRoot.getTransform();
+    t.setWorldPosition(this.coverSpotWorld);
+    // The marker's ring lies in its local XZ plane and its beam points along local +Y, so aligning
+    // +Y to the surface normal makes the ring sit flat on the surface and the beam stand out of it.
+    t.setWorldRotation(this.coverSpotNormal !== null ? this.upToNormal(this.coverSpotNormal) : toLensQuat({ x: 0, y: 0, z: 0, w: 1 }));
     this.coverSpotRoot.enabled = true;
+  }
+
+  /** Start the world-query session once (LensStudio:WorldQueryModule). Null session = plane fallback. */
+  private ensureHitSession(): void {
+    if (this.hitSession !== null || this.hitSessionTried) return;
+    this.hitSessionTried = true;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const wq: any = require("LensStudio:WorldQueryModule");
+      this.hitSession = wq.createHitTestSession();
+      this.hitSession.start();
+      print("Cover spot: world-query session started");
+    } catch (e) {
+      this.hitSession = null;
+      print("Cover spot: world query unavailable, using placement-plane fallback. " + e);
+    }
+  }
+
+  /**
+   * Cast the world-query ray along the current targeting interactor and remember the surface it
+   * hits, so the next pinch can commit the cover spot there (roomTap). The marker itself is NOT moved
+   * here: it stays at the seeded fallback until a pinch places it, which keeps the flow a deliberate
+   * "point, then pinch" (per the brief) and keeps the seed out of view so the off-view arrow still
+   * fires. Prints a throttled "probe hit" line so a DEBUG run shows whether a real surface was found.
+   */
+  private probeSurface(): void {
+    if (this.hitSession === null) return;
+    const interactors = SIK.InteractionManager.getTargetingInteractors();
+    const interactor = interactors.length > 0 ? interactors[0] : null;
+    if (interactor === null || interactor.startPoint === null || interactor.direction === null) return;
+    const start = interactor.startPoint;
+    const end = start.add(interactor.direction.normalize().uniformScale(PROBE_RANGE_CM));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.hitSession.hitTest(start, end, (result: any) => {
+      if (result === null || result === undefined) return;
+      const p: vec3 = result.position;
+      const n: vec3 = result.normal;
+      this.lastProbeHit = { position: p, normal: n };
+      this.lastProbeElapsed = this.elapsed;
+      if (this.elapsed - this.lastProbePrintElapsed > 0.5) {
+        this.lastProbePrintElapsed = this.elapsed;
+        print(
+          "probe hit at (" + p.x.toFixed(1) + ", " + p.y.toFixed(1) + ", " + p.z.toFixed(1) + ") " +
+            "normal (" + n.x.toFixed(2) + ", " + n.y.toFixed(2) + ", " + n.z.toFixed(2) + ")",
+        );
+      }
+    });
+  }
+
+  /** Rotation taking local +Y onto the surface normal, so the flat marker rests on the surface. */
+  private upToNormal(n: vec3): quat {
+    const len = Math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z) || 1;
+    const ny = n.y / len;
+    const d = Math.max(-1, Math.min(1, ny)); // up . n, with up = (0, 1, 0)
+    if (d > 0.9999) return toLensQuat({ x: 0, y: 0, z: 0, w: 1 });
+    if (d < -0.9999) return toLensQuat(quatFromAxisAngle({ x: 1, y: 0, z: 0 }, Math.PI));
+    // axis = up x n = (n.z, 0, -n.x), normalized.
+    const ax = n.z / len;
+    const az = -n.x / len;
+    const al = Math.sqrt(ax * ax + az * az) || 1;
+    return toLensQuat(quatFromAxisAngle({ x: ax / al, y: 0, z: az / al }, Math.acos(d)));
   }
 
   /** Keep the big placement collider far from any pinch ray while it is not in use. */

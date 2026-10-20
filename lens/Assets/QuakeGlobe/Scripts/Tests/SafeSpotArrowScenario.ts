@@ -34,7 +34,10 @@ export class SafeSpotArrowScenario extends Scenario {
 
     const headline = textUnderParent("Headline", "Alert During");
     expect(headline !== undefined, "Headline text should exist on the alert card").toBe(true);
-    expect(headline, "Headline text during shaking").toBe("Drop, Cover, Hold On");
+    // The headline is shown very large and wraps to a few short lines on the narrow card, so compare
+    // with newlines flattened back to spaces.
+    const headlineFlat = (headline !== undefined ? headline : "").replace(/\n/g, " ");
+    expect(headlineFlat, `Headline during shaking (got "${headline}")`).toBe("Drop, Cover, Hold On");
 
     // During shaking, the only reachable alert button is "Shaking stopped".
     expect(interactableReady("Button Shaking stopped"), '"Shaking stopped" should be reachable during shaking').toBe(true);
