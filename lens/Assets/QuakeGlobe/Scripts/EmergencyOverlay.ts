@@ -1,12 +1,22 @@
 // The earthquake-alert overlay (done criteria 2-5), built on top of the live globe.
 //
-// It owns every new scene object: the two cards, the home / epicentre / safe-spot markers,
-// the home-to-epicentre line, the off-view arrow, the quake pick targets and the chime. The
-// Lens component hands it the shared globe objects (handle, spinning content, camera) and
-// drives its lifecycle; all the decisions about what the overlay shows live here.
+// It owns every new scene object: the alert / controls / details cards, the home / epicentre /
+// cover-spot markers, the home-to-epicentre line, the off-view arrow, the quake pick targets and
+// the chime. The Lens component hands it the shared globe objects (handle, spinning content,
+// camera) and drives its lifecycle; all the decisions about what the overlay shows live here.
+//
+// The alert text (headline, the "during"/"after" lines, the "Shaking stopped" label, the cover-spot
+// label, the guidance source) comes from the EARTHQUAKE hazard profile in Core/hazards.ts, and the
+// stage advances through nextStage(). The alert has two stages:
+//   during - the ground is shaking. The card leads with "Drop, Cover, Hold On" and asks for nothing
+//            but "Shaking stopped"; the globe marks the epicentre, the home marker and the line, the
+//            chime plays, and an arrow (with a chime) points to the cover spot only when it is out
+//            of view. Nothing else needs a gesture.
+//   after  - "Shaking stopped" was pinched. The card shows the event details, the "after" guidance,
+//            "Send to emergency contacts" and "I'm safe" (which closes the alert).
 //
 // Globe-attached visuals are children of `content`, so they spin and scale with the globe.
-// Room-space objects (cards, safe spot, arrow) hang off the Lens root and are posed each frame.
+// Room-space objects (cards, cover spot, arrow) hang off the Lens root and are posed each frame.
 // The quake pick colliders live under a separate root that is synced to the globe every frame,
 // NOT under the manipulated handle: a pinch on a quake must select it, never grab the globe.
 
@@ -21,6 +31,8 @@ import {
   quatMultiply,
 } from "../Core/geo";
 import { GEOMETRY, SETTINGS } from "../Core/config";
+import { EARTHQUAKE, nextStage } from "../Core/hazards";
+import type { AlertStage } from "../Core/hazards";
 import { LINE_RADIUS_FACTOR } from "../Core/occluder";
 import { EPICENTER_COLOR, EPICENTER_PULSE, DEPTH_CLASS_COLORS, depthClass, pulse } from "../Core/style";
 import { buildEpicenterRing, highlightHalfSize } from "../Core/markers";
@@ -40,15 +52,13 @@ import {
 import { createText } from "./LensUi";
 import { AlertCard, ControlsCard, DetailsCard } from "./EmergencyUi";
 import {
-  ALERT_GUIDANCE,
   ALERT_SIMULATION_NOTE,
-  ALERT_TITLE,
   DEFAULT_HOME,
   SAFE_BUTTON_LABEL,
   SEND_BUTTON_LABEL,
   SENT_MESSAGE,
   SIMULATED_QUAKE,
-  SIMULATED_TIME_LABEL,
+  alertDetailsText,
   distanceFromHomeText,
   greatCircleKm,
   greatCirclePolyline,
@@ -71,26 +81,31 @@ export interface GlobeContext {
   setManipulationEnabled: (enabled: boolean) => void;
 }
 
-type Mode = "normal" | "home" | "safe";
+type Mode = "normal" | "home" | "cover";
 
-const CARD_WIDTH_CM = 18;
-/** Horizontal gap between the globe's surface and the inner edge of a side card. */
-const CARD_MARGIN_CM = 2;
+const CARD_WIDTH_CM = 16;
 /**
- * Side cards sit a little behind the globe's plane as well as beside it. On the narrow SPECS
- * display there is little room next to a 24 cm globe at 1 m; the extra depth shrinks the card
- * just enough to keep it fully in view and clear of the globe's silhouette.
+ * Side cards sit well behind the globe's plane. On the narrow SPECS display there is little room
+ * next to a 24 cm globe at 1 m; the extra depth shrinks the card's apparent width enough to fit the
+ * whole card between the globe's silhouette and the edge of the view. The inner edge is held clear
+ * of the globe by angle (see updatePoses), so the push-back no longer slides the card behind the
+ * globe's silhouette (which is what hid "Set as home" in the first build).
  */
-const CARD_BACK_CM = 30;
+const CARD_BACK_CM = 55;
+/**
+ * How far, in viewing angle, a card's inner edge clears the globe's silhouette. Measured from the
+ * viewer, so it holds regardless of how far the card is pushed back or how large the globe is.
+ */
+const CARD_CLEARANCE_ANGLE = (2.2 * Math.PI) / 180;
 /** Marker / line colours stay light (cyan, mint): the quakes remain the only saturated colour. */
 const HOME_COLOR: [number, number, number] = [0.5, 0.9, 1.0];
 const LINE_COLOR: [number, number, number] = [0.6, 0.9, 1.0];
-const SAFE_COLOR: [number, number, number] = [0.55, 1.0, 0.8];
+const COVER_COLOR: [number, number, number] = [0.55, 1.0, 0.8];
 /** Number of strongest quakes given a pinch target on the globe. */
 const PICK_SLOTS = 12;
 /** Pick targets sit just proud of the surface so a pinch hits them before the globe collider. */
 const PICK_RADIUS_FACTOR = 1.03;
-/** Half-angle of the "comfortably in view" cone; the arrow shows when the safe spot is outside it. */
+/** Half-angle of the "comfortably in view" cone; the arrow shows when the cover spot is outside it. */
 const IN_VIEW_HALF_COS = Math.cos((26 * Math.PI) / 180);
 
 function buildArrowMesh(size: number): TriangleMesh {
@@ -106,16 +121,20 @@ function buildArrowMesh(size: number): TriangleMesh {
 
 export class EmergencyOverlay {
   private readonly ctx: GlobeContext;
+  private readonly profile = EARTHQUAKE;
   private mode: Mode = "normal";
 
   private homeConfirmed = false;
   private homeLatLon = { lat: DEFAULT_HOME.lat, lon: DEFAULT_HOME.lon };
   private pendingHome = { lat: DEFAULT_HOME.lat, lon: DEFAULT_HOME.lon };
-  private safeSpotWorld: vec3 | null = null;
+  private coverSpotWorld: vec3 | null = null;
   private alertActive = false;
+  private stage: AlertStage = "during";
   private sentToContacts = false;
   private alertFacing: Quat | null = null;
   private elapsed = 0;
+  private alertStartElapsed = -999;
+  private arrowShown = false;
   private hintUntil = 0;
   private placed = false;
 
@@ -132,7 +151,7 @@ export class EmergencyOverlay {
   private homeMarkerVisual!: RenderMeshVisual;
   private homeRingVisual!: RenderMeshVisual;
 
-  private safeSpotRoot!: SceneObject;
+  private coverSpotRoot!: SceneObject;
   private arrowRoot!: SceneObject;
   private placementPlane!: SceneObject;
   private placementInteractable!: Interactable;
@@ -162,14 +181,25 @@ export class EmergencyOverlay {
   build(): void {
     const base = this.ctx.baseMaterial;
     const content = this.ctx.content;
+    const source = "Guidance: " + this.profile.guidanceSource;
 
-    // Alert card to the left of the globe, details card to the right (see updatePoses).
+    // Alert card (both stages) and controls card to the left of the globe, details card to the
+    // right (see updatePoses). The card copy comes from the EARTHQUAKE hazard profile.
     this.alertCard = new AlertCard(
       this.ctx.root,
       CARD_WIDTH_CM,
-      { title: ALERT_TITLE, simNote: ALERT_SIMULATION_NOTE, guidance: ALERT_GUIDANCE, sendLabel: SEND_BUTTON_LABEL, safeLabel: SAFE_BUTTON_LABEL },
-      () => this.sendContacts(),
-      () => this.imSafe(),
+      {
+        title: this.profile.title,
+        simNote: ALERT_SIMULATION_NOTE,
+        headline: this.profile.headline,
+        during: this.profile.during,
+        after: this.profile.after,
+        source,
+        advanceLabel: this.profile.advanceLabel,
+        sendLabel: SEND_BUTTON_LABEL,
+        safeLabel: SAFE_BUTTON_LABEL,
+      },
+      { onAdvance: () => this.advanceStage(), onSend: () => this.sendContacts(), onSafe: () => this.imSafe() },
       this.ctx.font,
     );
     this.detailsCard = new DetailsCard(this.ctx.root, CARD_WIDTH_CM, () => this.ctx.selectQuakeById(""), this.ctx.font);
@@ -180,8 +210,9 @@ export class EmergencyOverlay {
         onAlert: () => this.phoneAlert(),
         onSetHome: () => this.enterHomeMode(),
         onConfirmHome: () => this.confirmHome(),
-        onSetSafe: () => this.enterSafeMode(),
+        onSetCover: () => this.enterCoverMode(),
       },
+      this.profile.spotLabel,
       this.ctx.font,
     );
     this.controlsCard.setVisible(false); // shown once the globe is placed (onPlaced)
@@ -207,22 +238,22 @@ export class EmergencyOverlay {
     this.homeMarkerVisual = createMeshObject("Home marker", content, null, glowMaterial(base, HOME_COLOR));
     this.homeRingVisual = createMeshObject("Home ring", content, null, glowMaterial(base, HOME_COLOR));
 
-    // Safe-spot marker in the room: a flat glowing ring, a dot and an upright beam.
-    this.safeSpotRoot = createEmptyObject("Safe spot", this.ctx.root);
-    const safeMat = glowMaterial(base, SAFE_COLOR);
-    const ring = createMeshObject("Safe ring", this.safeSpotRoot, triangleRenderMesh(buildRing(18, 20, 64)), safeMat);
+    // Cover-spot marker in the room: a flat glowing ring, a dot and an upright beam.
+    this.coverSpotRoot = createEmptyObject("Cover spot", this.ctx.root);
+    const coverMat = glowMaterial(base, COVER_COLOR);
+    const ring = createMeshObject("Cover ring", this.coverSpotRoot, triangleRenderMesh(buildRing(18, 20, 64)), coverMat);
     ring.getSceneObject().getTransform().setLocalRotation(toLensQuat(quatFromAxisAngle({ x: 1, y: 0, z: 0 }, -Math.PI / 2)));
-    createMeshObject("Safe dot", this.safeSpotRoot, triangleRenderMesh(buildOctahedron(3)), safeMat);
-    createMeshObject("Safe beam", this.safeSpotRoot, triangleRenderMesh(buildPrism({ x: 0, y: 0, z: 0 }, { x: 0, y: 34, z: 0 }, 1.4)), safeMat);
-    this.safeSpotRoot.enabled = false;
+    createMeshObject("Cover dot", this.coverSpotRoot, triangleRenderMesh(buildOctahedron(3)), coverMat);
+    createMeshObject("Cover beam", this.coverSpotRoot, triangleRenderMesh(buildPrism({ x: 0, y: 0, z: 0 }, { x: 0, y: 34, z: 0 }, 1.4)), coverMat);
+    this.coverSpotRoot.enabled = false;
 
     // Off-view arrow, posed in front of the camera each frame.
-    this.arrowRoot = createEmptyObject("Safe spot arrow", this.ctx.root);
-    createMeshObject("Arrow", this.arrowRoot, triangleRenderMesh(buildArrowMesh(3.2)), glowMaterial(base, SAFE_COLOR));
+    this.arrowRoot = createEmptyObject("Cover spot arrow", this.ctx.root);
+    createMeshObject("Arrow", this.arrowRoot, triangleRenderMesh(buildArrowMesh(3.2)), glowMaterial(base, COVER_COLOR));
     this.arrowRoot.enabled = false;
 
-    // Large invisible plane that catches a pinch "in the room" while setting the safe spot.
-    this.placementPlane = createEmptyObject("Safe spot placement", this.ctx.root);
+    // Large invisible plane that catches a pinch "in the room" while setting the cover spot.
+    this.placementPlane = createEmptyObject("Cover spot placement", this.ctx.root);
     const planeCollider = this.placementPlane.createComponent("Physics.ColliderComponent");
     const box = Shape.createBoxShape();
     box.size = new vec3(320, 240, 4);
@@ -318,7 +349,18 @@ export class EmergencyOverlay {
     forward = forward.normalize();
     const right = new vec3(0, 1, 0).cross(forward).normalize();
     const scale = handleT.getWorldScale().y;
-    const offset = this.ctx.globeRadiusCm * scale + CARD_WIDTH_CM / 2 + CARD_MARGIN_CM;
+
+    // Keep each side card fully clear of the globe's silhouette AND inside the view. The silhouette
+    // is an angular disc seen from the viewer (half-angle theta); hold the card's inner edge a few
+    // degrees beyond it. That angle is measured from the viewer, so pushing the card back only
+    // shrinks its apparent width (helping it fit the display) instead of sliding it behind the globe
+    // (the old fixed-offset + push-back is what hid "Set as home" behind the globe's edge).
+    const silhouetteR = this.ctx.globeRadiusCm * scale;
+    const eyeToCenter = Math.max(silhouetteR + 1, camPos.distance(globeCenter));
+    const theta = Math.asin(Math.min(0.999, silhouetteR / eyeToCenter));
+    const cardDepth = eyeToCenter + CARD_BACK_CM;
+    const innerLateral = Math.tan(theta + CARD_CLEARANCE_ANGLE) * cardDepth;
+    const offset = innerLateral + CARD_WIDTH_CM / 2;
     const back = forward.uniformScale(-CARD_BACK_CM);
 
     const leftCenter = globeCenter.add(right.uniformScale(-offset)).add(back);
@@ -329,17 +371,16 @@ export class EmergencyOverlay {
 
     // Hint floats just above the globe.
     if (this.hint.getSceneObject().enabled) {
-      const hintPos = globeCenter.add(new vec3(0, this.ctx.globeRadiusCm * scale + 3, 0));
+      const hintPos = globeCenter.add(new vec3(0, silhouetteR + 3, 0));
       const ht = this.hint.getSceneObject().getTransform();
       ht.setWorldPosition(hintPos);
       ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
     }
 
-    // Safe-spot placement plane catches a room pinch while setting the safe spot. Keep it beyond
+    // Cover-spot placement plane catches a room pinch while setting the cover spot. Keep it beyond
     // the side cards (which sit CARD_BACK_CM behind the globe) so it never occludes their buttons:
     // a pinch aimed at a card hits the nearer card, while a pinch into open space still lands here.
-    // (At 110 cm it sat in front of the cards and swallowed the ray to "Phone alert received".)
-    if (this.mode === "safe") {
+    if (this.mode === "cover") {
       const lookDir = cam.forward.uniformScale(-1).normalize();
       const planeDist = camPos.distance(globeCenter) + CARD_BACK_CM + 60;
       const planePos = camPos.add(lookDir.uniformScale(planeDist));
@@ -359,32 +400,37 @@ export class EmergencyOverlay {
     t.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(pos)))));
   }
 
+  /**
+   * The off-view arrow points to the cover spot while the ground shakes (stage "during") and the
+   * spot is outside the comfortable forward cone. It chimes the moment the spot leaves view, but not
+   * on top of the alert's own onset chime.
+   */
   private updateArrow(cam: Transform, camPos: vec3): void {
-    const show = this.alertActive && this.safeSpotWorld !== null;
-    if (!show) {
-      if (this.arrowRoot.enabled) this.arrowRoot.enabled = false;
-      return;
+    const canShow = this.alertActive && this.stage === "during" && this.coverSpotWorld !== null;
+    let visible = false;
+    if (canShow) {
+      const lookDir = cam.forward.uniformScale(-1).normalize();
+      const dir = this.coverSpotWorld!.sub(camPos).normalize();
+      if (lookDir.dot(dir) <= IN_VIEW_HALF_COS) {
+        visible = true;
+        const right = cam.right;
+        const up = cam.up;
+        const rx = dir.dot(right);
+        const uy = dir.dot(up);
+        const angle = Math.atan2(uy, rx);
+        const arrowPos = camPos.add(lookDir.uniformScale(60)).add(right.uniformScale(rx * 10)).add(up.uniformScale(uy * 10));
+        const billboard = alignmentRotation(fromLensVec(camPos.sub(arrowPos)));
+        const spin = quatFromAxisAngle({ x: 0, y: 0, z: 1 }, angle);
+        const t = this.arrowRoot.getTransform();
+        t.setWorldPosition(arrowPos);
+        t.setWorldRotation(toLensQuat(quatMultiply(billboard, spin)));
+      }
     }
-    const lookDir = cam.forward.uniformScale(-1).normalize();
-    const toSafe = this.safeSpotWorld!.sub(camPos);
-    const dir = toSafe.normalize();
-    const inView = lookDir.dot(dir) > IN_VIEW_HALF_COS;
-    if (inView) {
-      if (this.arrowRoot.enabled) this.arrowRoot.enabled = false;
-      return;
+    if (visible && !this.arrowShown && this.elapsed - this.alertStartElapsed > 0.8) {
+      this.playChime();
     }
-    const right = cam.right;
-    const up = cam.up;
-    const rx = dir.dot(right);
-    const uy = dir.dot(up);
-    const angle = Math.atan2(uy, rx);
-    const arrowPos = camPos.add(lookDir.uniformScale(60)).add(right.uniformScale(rx * 10)).add(up.uniformScale(uy * 10));
-    const billboard = alignmentRotation(fromLensVec(camPos.sub(arrowPos)));
-    const spin = quatFromAxisAngle({ x: 0, y: 0, z: 1 }, angle);
-    const t = this.arrowRoot.getTransform();
-    t.setWorldPosition(arrowPos);
-    t.setWorldRotation(toLensQuat(quatMultiply(billboard, spin)));
-    if (!this.arrowRoot.enabled) this.arrowRoot.enabled = true;
+    this.arrowShown = visible;
+    if (this.arrowRoot.enabled !== visible) this.arrowRoot.enabled = visible;
   }
 
   // ---------------------------------------------------------------- selection (details card)
@@ -423,9 +469,13 @@ export class EmergencyOverlay {
 
   // ---------------------------------------------------------------- actions
 
+  /** Fire the simulated alert and enter stage "during". */
   phoneAlert(): void {
     this.alertActive = true;
+    this.stage = "during";
     this.sentToContacts = false;
+    this.alertStartElapsed = this.elapsed;
+    this.arrowShown = false;
     this.ctx.selectQuakeById(""); // the epicentre takes over the globe
     this.setMode("normal");
 
@@ -435,30 +485,48 @@ export class EmergencyOverlay {
     this.showLine(home);
 
     const km = greatCircleKm(home.lat, home.lon, SIMULATED_QUAKE.lat, SIMULATED_QUAKE.lon);
-    const sim = SIMULATED_QUAKE;
-    this.alertCard.setBody(
-      "M " + sim.mag.toFixed(1) + "    depth " + sim.depthKm + " km\n" +
-      sim.place + "\n" +
-      SIMULATED_TIME_LABEL,
-    );
+    this.alertCard.setStage("during");
     this.alertCard.setDistance(distanceFromHomeText(km));
+    this.alertCard.setDetails(alertDetailsText());
     this.alertCard.setStatus("");
     this.alertCard.setVisible(true);
 
-    this.alertFacing = quatMultiply(alignmentRotation(this.ctx.viewerDirectionInGlobe()), facingRotation(sim.lat, sim.lon));
+    this.alertFacing = quatMultiply(alignmentRotation(this.ctx.viewerDirectionInGlobe()), facingRotation(SIMULATED_QUAKE.lat, SIMULATED_QUAKE.lon));
     this.refreshControls();
     this.playChime();
   }
 
+  /** "Shaking stopped": advance from "during" to "after" and reveal the details and next steps. */
+  advanceStage(): void {
+    if (!this.alertActive) return;
+    const next = nextStage(this.stage, "advance");
+    if (next === this.stage) return;
+    this.stage = next; // "after"
+    this.alertCard.setStage("after");
+    this.alertCard.setDetails(alertDetailsText());
+    this.arrowShown = false;
+    if (this.arrowRoot.enabled) this.arrowRoot.enabled = false; // the arrow belongs to the shaking stage
+  }
+
+  /** "I'm safe": only the "after" stage can close the alert (done). */
   imSafe(): void {
+    if (!this.alertActive) return;
+    if (nextStage(this.stage, "safe") !== "done") return;
+    this.stage = "during"; // ready for the next alert
+    this.closeAlert();
+  }
+
+  private closeAlert(): void {
     this.alertActive = false;
     this.alertFacing = null;
+    this.alertCard.setStage("during");
     this.alertCard.setVisible(false);
     this.epicenterRingVisual.enabled = false;
     this.epicenterMarkerVisual.enabled = false;
     this.epicenterStemVisual.enabled = false;
     this.lineVisual.enabled = false;
     this.arrowRoot.enabled = false;
+    this.arrowShown = false;
     if (!this.homeConfirmed) {
       this.homeMarkerVisual.enabled = false;
       this.homeRingVisual.enabled = false;
@@ -471,7 +539,7 @@ export class EmergencyOverlay {
     this.setMode("home");
     this.pendingHome = this.homeConfirmed ? { lat: this.homeLatLon.lat, lon: this.homeLatLon.lon } : { lat: DEFAULT_HOME.lat, lon: DEFAULT_HOME.lon };
     this.showHomeMarker(this.pendingHome);
-    this.showHint("Pinch the globe to place home, then Set as Home", 0);
+    this.showHint("Pinch the globe to place home, then Set as home", 0);
   }
 
   /** Called by the Lens when the globe is tapped in home mode; `hit` is a world point on the sphere. */
@@ -487,7 +555,9 @@ export class EmergencyOverlay {
     const lon = (Math.atan2(local.x, local.z) * 180) / Math.PI;
     this.pendingHome = { lat, lon };
     this.showHomeMarker(this.pendingHome);
-    this.showHint("Pinch Set as Home to confirm", 0);
+    // A point has now been picked: offer "Set as home" (hidden until now, per the design brief).
+    this.controlsCard.setConfirmHomeVisible(true);
+    this.showHint("Pinch Set as home to confirm", 0);
   }
 
   confirmHome(): void {
@@ -504,35 +574,35 @@ export class EmergencyOverlay {
     }
   }
 
-  enterSafeMode(): void {
+  enterCoverMode(): void {
     if (this.alertActive) return;
-    this.setMode("safe");
+    this.setMode("cover");
     const cam = this.ctx.cameraTransform();
     const camPos = cam.getWorldPosition();
     // Seed a spot off to the side at floor height, so the arrow has something to point to even
     // without a room pinch; a pinch on the placement plane moves it (roomTap).
     const floorY = camPos.y - 120;
     const seed = camPos.add(cam.right.uniformScale(150));
-    this.safeSpotWorld = new vec3(seed.x, floorY, seed.z);
-    this.placeSafeSpot();
+    this.coverSpotWorld = new vec3(seed.x, floorY, seed.z);
+    this.placeCoverSpot();
     this.placementPlane.enabled = true;
-    this.showHint("Pinch in front of you to place your safe spot", 0);
+    this.showHint("Pinch in front of you to place your cover spot", 0);
   }
 
-  /** Called by the Lens when the placement plane is tapped in safe mode. */
+  /** Called by the Lens when the placement plane is tapped in cover mode. */
   roomTap(hit: vec3 | null): void {
-    if (this.mode !== "safe") return;
+    if (this.mode !== "cover") return;
     const cam = this.ctx.cameraTransform();
     const floorY = cam.getWorldPosition().y - 120;
-    if (hit !== null) this.safeSpotWorld = new vec3(hit.x, floorY, hit.z);
-    this.placeSafeSpot();
+    if (hit !== null) this.coverSpotWorld = new vec3(hit.x, floorY, hit.z);
+    this.placeCoverSpot();
     this.placementPlane.enabled = false;
     this.setMode("normal");
-    this.showHint("Safe spot set", 2.5);
+    this.showHint("Cover spot set", 2.5);
   }
 
   sendContacts(): void {
-    if (!this.alertActive) return;
+    if (!this.alertActive || this.stage !== "after") return;
     this.sentToContacts = true;
     this.alertCard.setStatus(SENT_MESSAGE);
   }
@@ -544,11 +614,13 @@ export class EmergencyOverlay {
     this.mode = mode;
     const normal = mode === "normal";
     this.ctx.setManipulationEnabled(normal);
-    if (mode !== "safe") {
+    if (mode !== "cover") {
       this.placementPlane.enabled = false;
       this.parkPlacementPlane();
     }
-    if (mode !== "home" && mode !== "safe" && this.elapsed > this.hintUntil) {
+    // "Set as home" belongs to set-home mode and only after a point is picked; drop it otherwise.
+    if (mode !== "home") this.controlsCard.setConfirmHomeVisible(false);
+    if (mode !== "home" && mode !== "cover" && this.elapsed > this.hintUntil) {
       this.hint.getSceneObject().enabled = false;
     }
   }
@@ -615,10 +687,10 @@ export class EmergencyOverlay {
     }
   }
 
-  private placeSafeSpot(): void {
-    if (this.safeSpotWorld === null) return;
-    this.safeSpotRoot.getTransform().setWorldPosition(this.safeSpotWorld);
-    this.safeSpotRoot.enabled = true;
+  private placeCoverSpot(): void {
+    if (this.coverSpotWorld === null) return;
+    this.coverSpotRoot.getTransform().setWorldPosition(this.coverSpotWorld);
+    this.coverSpotRoot.enabled = true;
   }
 
   /** Keep the big placement collider far from any pinch ray while it is not in use. */

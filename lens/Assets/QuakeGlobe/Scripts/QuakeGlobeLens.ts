@@ -354,7 +354,7 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.spinButton = new PanelButton(this.panel, "Spin", new vec3(W / 2 - w2 / 2, row2, 0), w2, h, true, () => this.resumeSpin(), font);
     this.buttons.push(this.spinButton);
 
-    // The alert-overlay controls (Phone alert received, Set home, Set safe spot) live on a
+    // The alert-overlay controls (Phone alert received, Set home, Set cover spot) live on a
     // separate card beside the globe (EmergencyOverlay), so this panel stays inside the view.
 
     // Backplate behind everything on the panel, padded around the content.

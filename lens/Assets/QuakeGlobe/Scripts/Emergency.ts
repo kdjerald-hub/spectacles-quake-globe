@@ -10,6 +10,11 @@ import { EARTH_RADIUS_KM, geoToCartesian } from "../Core/geo";
 import { formatAge } from "../Core/freshness";
 import { nearestBoundary } from "../Core/plates";
 
+// The alert copy that varies by hazard (headline, the "during" and "after" lines, the spot label,
+// the "Shaking stopped" label, the guidance source) comes from the EARTHQUAKE profile in
+// Core/hazards.ts; the overlay reads it from there. This file keeps only what is specific to the
+// simulated event (the Hualien quake, its home default) and the Lens's own button labels.
+
 const DEG = Math.PI / 180;
 const RAD = 180 / Math.PI;
 
@@ -33,23 +38,26 @@ export const SIMULATED_QUAKE: Quake = {
 export const SIMULATED_TIME_LABEL = "2024-04-03 07:58 local time";
 
 /**
- * Default home: Taipei, Taiwan. The learner "lives in an earthquake zone", so home starts in
- * one. A pinch on the globe in set-home mode moves it; "Set as home" confirms. Having a default
- * means the alert always has a distance to show, even in a quick demo.
+ * Default home: Hualien City, Taiwan. The 2024 alert reached Hualien (and 11 other counties); the
+ * demo stands there. A pinch on the globe in set-home mode moves it; "Set as home" confirms. Having
+ * a default means the alert always has a distance to show, even in a quick demo.
  */
-export const DEFAULT_HOME = { lat: 25.033, lon: 121.565 };
+export const DEFAULT_HOME = { lat: 23.9667, lon: 121.6 };
 
 // ---- alert card copy ------------------------------------------------------
+// The headline, the "during"/"after" lines, the "Shaking stopped" label and the guidance source
+// come from Core/hazards.ts (EARTHQUAKE). These constants are the parts that are the Lens's own:
+// the simulation note, the two "after"-stage button labels, the magnitude reading, and the detail
+// text for the simulated event.
 
-export const ALERT_TITLE = "EARTHQUAKE ALERT";
-/** Must stay on screen: the demo fires a simulation, never a real alert. */
+/** Must stay on screen in every alert stage: the demo fires a simulation, never a real alert. */
 export const ALERT_SIMULATION_NOTE = "SIMULATION - demo, not a real alert";
-/** Official guidance during shaking (ready.gov / USGS): stay where you are and take cover. */
-export const ALERT_GUIDANCE = "Drop, Cover, Hold On";
 export const SEND_BUTTON_LABEL = "Send to emergency contacts";
-export const SENT_MESSAGE = "Sent to emergency contacts";
+/** Shown once the send button is pinched; the "(simulated)" keeps the demo honest (nothing is sent). */
+export const SENT_MESSAGE = "Sent to emergency contacts (simulated)";
 export const SAFE_BUTTON_LABEL = "I'm safe";
-export const SAFE_SPOT_ARROW_HINT = "Safe spot is behind you";
+/** This event as reported on both scales: USGS moment magnitude and Taiwan CWA local magnitude. */
+export const SIMULATED_MAG_LABEL = "USGS M7.4 (Taiwan CWA: ML 7.2)";
 
 // ---- geometry / text helpers ---------------------------------------------
 
@@ -101,6 +109,25 @@ export function quakeCardText(q: Quake, nowMs: number, timeLabel?: string): stri
 /** One line for the alert card: how far the epicentre is from the set home location. */
 export function distanceFromHomeText(km: number): string {
   return "Epicentre " + formatDistanceKm(km) + " from home";
+}
+
+/**
+ * The details shown once the shaking stops (alert stage "after"): the magnitude on both the USGS
+ * and Taiwan CWA scales, depth, the local wall-clock time, the place, and the nearest plate
+ * boundary (Core/plates.nearestBoundary). The simulated event is fixed, so the time is a fixed
+ * label rather than a relative age.
+ */
+export function alertDetailsText(): string {
+  const q = SIMULATED_QUAKE;
+  const nb = nearestBoundary(q.lat, q.lon);
+  const boundary = nb ? "Nearest boundary: " + nb.text : "Nearest boundary: none nearby";
+  return (
+    SIMULATED_MAG_LABEL + "\n" +
+    "Depth " + Math.max(0, Math.round(q.depthKm)) + " km\n" +
+    SIMULATED_TIME_LABEL + "\n" +
+    q.place + "\n" +
+    boundary
+  );
 }
 
 /**

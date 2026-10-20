@@ -143,10 +143,14 @@ export async function triggerButton(interactor: DefaultLeafInteractor, name: str
 /**
  * Shared reset run at the start of every scenario, per the done-criteria contract:
  *   1. wait until the Lens has placed its Panel and "Button Spin" is reachable (up to 15 s), then
- *   2. dismiss any active alert ("Button I'm safe", only while the Alert Card is enabled), then
+ *   2. dismiss any active alert, then
  *   3. clear any quake selection ("Button Spin", on the always-present Panel).
  * Leaves the Controls Card active with nothing selected. Scenarios share Lens state, so this
  * guarantees a known baseline regardless of execution order.
+ *
+ * The alert has two stages. "I'm safe" lives only on the "after" page, so if a previous scenario
+ * left the alert mid-shake (the "during" page is up), advance it with "Shaking stopped" first, then
+ * close it with "I'm safe".
  *
  * The Lens builds the Panel in onAwake but keeps it disabled until placeInFront() runs ~0.25 s
  * after start; LEAF only finds interactables that are enabled in the hierarchy. Pressing Spin
@@ -160,6 +164,10 @@ export async function resetState(interactor: DefaultLeafInteractor): Promise<voi
   }
 
   if (objectEnabled("Alert Card")) {
+    if (objectEnabled("Alert During")) {
+      await triggerButton(interactor, "Button Shaking stopped");
+      await waitForEnabled("Alert After", true);
+    }
     await triggerButton(interactor, "Button I'm safe");
     await waitForEnabled("Alert Card", false);
   }

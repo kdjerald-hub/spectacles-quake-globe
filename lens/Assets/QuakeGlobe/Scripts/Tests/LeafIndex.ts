@@ -22,7 +22,7 @@ export class LeafIndex extends BaseScriptComponent {
     { id: "map_detail", typename: MapDetailScenario.getTypeName() },
     { id: "quake_details", typename: QuakeDetailsScenario.getTypeName() },
     { id: "alert", typename: AlertScenario.getTypeName() },
-    { id: "safe_spot_arrow", typename: SafeSpotArrowScenario.getTypeName() },
+    { id: "cover_spot", typename: SafeSpotArrowScenario.getTypeName() },
     { id: "emergency_contacts", typename: EmergencyContactsScenario.getTypeName() },
     { id: "home_marker", typename: HomeMarkerScenario.getTypeName() },
   ];
