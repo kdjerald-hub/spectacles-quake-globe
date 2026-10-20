@@ -125,6 +125,17 @@ Done criteria 4 and 5 now read:
 5. After the shaking: pinching "Shaking stopped" shows the quake details, and pinching the send button
    shows "Sent to emergency contacts".
 
+## Polish notes after judging the third build (2026-10-20)
+The learner asked the agents to judge the build and fix what they found before filming.
+- Text must read easily from where I stand. The alert headline "Drop, Cover, Hold On" is clearly the
+  biggest thing on the card, about twice its current size, and every other line on the side cards
+  is easy to read in a screen recording.
+- Buttons on the side cards are full width with labels on one line; "Send to emergency contacts" no
+  longer wraps inside a small button.
+- The cover spot sits on the real surface I pinch (a table or the floor in the preview room), as the
+  brief says ("at floor or table height"). Where no surface is found, the current placement plane is
+  the fallback.
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.
