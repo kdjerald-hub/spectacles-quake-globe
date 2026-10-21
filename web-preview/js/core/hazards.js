@@ -45,8 +45,9 @@
  
 
 /**
- * Guidance: Earthquake Country Alliance and Ready.gov. Drop, cover and hold on where you are;
- * don't move to another room while the ground shakes; expect aftershocks.
+ * Guidance: Earthquake Country Alliance, Ready.gov and Taiwan's Central Weather Administration
+ * (its phone alert says 趴下、掩護、穩住). Drop, cover and hold on where you are; don't move to
+ * another room while the ground shakes; expect aftershocks.
  */
 export const EARTHQUAKE                = {
   id: "earthquake",
@@ -57,7 +58,7 @@ export const EARTHQUAKE                = {
   spotLabel: "Cover spot",
   advanceLabel: "Shaking stopped",
   after: ["Expect aftershocks: drop, cover and hold on again."],
-  guidanceSource: "Earthquake Country Alliance, Ready.gov",
+  guidanceSource: "Earthquake Country Alliance, Ready.gov, Taiwan CWA",
 };
 
 export const HAZARD_PROFILES                           = [EARTHQUAKE];

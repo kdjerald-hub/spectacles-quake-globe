@@ -102,7 +102,7 @@ Each one can be checked in Lens Studio's preview.
 - Sending to emergency contacts needs a messaging service and the contacts' consent; simulated only.
 - Feel unproven: comfort over time and real hand tracking.
 
-## Design notes after the first build (2026-10-19, approved by the learner)
+## Design notes after the first build (2026-10-19, from an AI-assisted review, approved by the learner)
 Judging the first build against official guidance changed the alert. Official guidance during
 shaking is to drop, cover and hold on where you are, and phone alerts don't say where the quake is.
 - The alert leads with "Drop, Cover, Hold On" in the biggest text. The safe spot becomes a **cover
@@ -116,7 +116,8 @@ shaking is to drop, cover and hold on where you are, and phone alerts don't say 
   video ends with "Not a warning system. Follow official guidance."
 - The demo home is Hualien City. In 2024 the real alert went to Hualien and 11 other counties, but
   not to Taipei, which still shook at intensity 5-.
-- The magnitude shows both scales: USGS M7.4 (Taiwan's Central Weather Administration: ML 7.2).
+- The magnitude shows both scales: USGS M7.4 (Taiwan's Central Weather Administration: ML 7.1 in
+  its official report No. 019; 7.2 was the first figure reported that morning).
 
 Done criteria 4 and 5 now read:
 4. Cover spot: after I mark my cover spot, the alert leads with "Drop, Cover, Hold On" and shows the
@@ -135,6 +136,20 @@ The learner asked the agents to judge the build and fix what they found before f
 - The cover spot sits on the real surface I pinch (a table or the floor in the preview room), as the
   brief says ("at floor or table height"). Where no surface is found, the current placement plane is
   the fallback.
+
+## Notes from the video review (2026-10-21)
+A four-member AI review committee judged the first cut of the demo video; the learner asked the
+agents to fix what they found. For the Lens:
+- During the alert the dashboard steps aside: the main panel and its buttons hide while the alert
+  is open, so the only thing to tap while shaking is "Shaking stopped". They come back after
+  "I'm safe".
+- The alert card takes the panel's place, centred below the globe at about 1 m, big enough to read
+  in a screen recording, and never over the off-view arrow.
+- The globe labels the epicentre ring with its distance from home ("15 km from home").
+- While setting the cover spot, the hint ("Point at a table or the floor and pinch...") stays near
+  where I am looking, so it is still readable when I look down.
+- The card says "Taiwan CWA: ML 7.1" (the official report) and "Depth 40 km (USGS)".
+- The alert picks its wording from the hazard profile that matches the alert's event type.
 
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
