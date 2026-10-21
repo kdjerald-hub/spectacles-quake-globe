@@ -60,7 +60,7 @@ usual range", "busier than usual") using plain counts, no forecasting.
 
 Built for honesty with live data: the Lens says how old the picture is, admits when it is offline
 or stale, never drops records silently, and keeps the last good data when a refresh fails. All logic
-lives in a platform-independent TypeScript core with 69 unit tests run against real USGS snapshots,
+lives in a platform-independent TypeScript core with 98 unit tests run against real USGS snapshots,
 the same core drives a browser preview, and the Lens scripts type-check in strict mode against the
 official API declarations of three Lens Studio versions.
 

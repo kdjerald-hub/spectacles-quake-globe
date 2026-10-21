@@ -1,45 +1,90 @@
 # Live Quake Globe
 
-A live globe of the world's earthquakes for Snap Spectacles. Put it in front of you, walk around
-it, and see quakes **inside** the Earth at their real depth, where they trace plates sinking into
-the mantle. Data comes from the USGS real-time catalog and refreshes every five minutes.
+When the earthquake alert hits your phone, this Lens for Snap Spectacles (SPECS) shows what the phone
+can't. Drop, Cover, Hold On comes first. Your cover spot is marked in your room. On a live globe in
+front of you, it shows where the quake struck and how far that is from home. After the shaking it
+shows what happened and which plates met, and one pinch tells your emergency contacts.
 
-**Running in the Lens Studio Preview (SPECS 27, live USGS data):**
+Made for the Learn AR with SPECS hackathon:
+- planned with Snap's plan-lens skill pack;
+- built by Claude Code through Snap's CLAD plugin and the Lens Studio MCP;
+- tested with LEAF.
 
-| Seven days, idle spin | After pinching **Strongest** | After pinching **30 days** |
-|---|---|---|
-| ![Lens, 7 days](docs/images/lens_preview_week.png) | ![Lens, strongest](docs/images/lens_preview_strongest.png) | ![Lens, 30 days](docs/images/lens_preview_30days.png) |
+> **A simulation, not a warning system.** The alert here is a stand-in: a button replays the M7.4
+> Hualien, Taiwan earthquake of 2024-04-03 from the USGS catalog. The Lens doesn't detect earthquakes
+> or send messages. It has run in the Lens Studio preview only, not yet on Spectacles. See
+> [docs/SAFETY.md](docs/SAFETY.md).
 
-**Browser preview** (same core code, larger view):
+**In the Lens Studio preview (SPECS 27):**
 
-![Seven days of M2.5+ earthquakes around the Pacific](docs/images/readme_pacific.png)
-
-| Strongest event of the month, turned toward you and ringed at its epicentre | Tonga at the edge of the globe: deep (blue) quakes sit well inside the Earth |
-|---|---|
-| ![Strongest](docs/images/readme_strongest.png) | ![Slab](docs/images/readme_slab.png) |
-
-*The browser adds a dark far hemisphere so the globe reads as a volume on a monitor. Everything
-else is the geometry the Lens draws.*
+| The alert: Drop, Cover, Hold On first | Your cover spot, on the floor | After the shaking: the details | Around it: the live globe |
+|---|---|---|---|
+| ![The alert card while shaking](docs/images/alert_during.png) | ![The cover spot on the preview room's floor](docs/images/cover_spot.png) | ![The details after the shaking](docs/images/alert_after.png) | ![The live globe with the strongest quake of the week](docs/images/globe_strongest.png) |
 
 ## What it does
 
-- **Every quake at its real location and depth.** Depth is drawn three times deeper than true
-  scale so slabs are visible on a 24 cm globe; the legend always says so.
-- **Three windows:** 24 hours (M2.5+), 7 days (M2.5+), 30 days (M4.5+).
-- **Strongest:** tours the ten largest events in the window. The globe turns the event toward
-  you and shows magnitude, depth, time and place, then holds still so you can walk around it.
-- **Is today normal?** Compares the last 24 hours of M4.5+ quakes with the previous 29 days,
-  using plain counts and percentiles. No forecasting.
-- **Honest about its data:** shows how old the picture is, says when it is offline, stale, or
-  the device clock looks wrong, never drops records silently, keeps the last good data when a
-  refresh fails, and starts from a saved copy when there is no connection.
-- **Made for a see-through display.** Everything is light on dark, because dark pixels are
-  transparent on the glasses. A soft atmosphere traces the globe's outline and stays on it as you
-  walk closer. The newest quakes pulse, the selected one gets a ring at its epicentre, and a faint
-  inner grid marks 660 km, where the deepest quakes stop. Panel and buttons are Snap's free
-  Spectacles UI Kit ([free UI resources](docs/FREE_UI_RESOURCES.md)).
+**The alert moment (a simulation)**
 
-Not a warning system: a Lens only runs while it is open.
+1. Before an alert, pinch **Set cover spot**. Look at the floor, or at a sturdy table beside you, and
+   pinch. A world-query hit test places the spot on that surface.
+2. Pinch **Phone alert received**, the stand-in for a real phone alert. A chime plays.
+   - The card leads with Drop, Cover, Hold On and "Stay where you are".
+   - The dashboard steps aside. The only button left is **Shaking stopped**.
+3. The globe turns to the epicentre, rings it and labels its distance from home.
+4. If your cover spot is out of view, a small arrow at the edge of your view and a chime point to it.
+5. After you pinch **Shaking stopped**, the card shows:
+   - USGS M7.4 (Taiwan CWA: ML 7.1)
+   - the depth, the local time and the place
+   - the nearest plate boundary
+6. Then pinch **Send to emergency contacts** (simulated), and **I'm safe**.
+
+**The live globe**
+
+- **Every quake from the USGS real-time feeds, at its true location and depth.** Depth is drawn
+  three times deeper than true scale, so slabs show on a 24 cm globe; the legend always says so.
+- **Map detail:**
+  - the 1:50m coastline, with island arcs;
+  - PB2002 plate boundaries, with barbs on subduction zones;
+  - continent, ocean and country names that never overlap.
+- **Three windows:** 24 hours (M2.5+), 7 days (M2.5+), 30 days (M4.5+).
+- **Strongest:** tours the ten largest events. The globe turns each one toward you and shows its
+  magnitude, depth, time, place and the nearest plate boundary.
+- **Is today normal?** Compares the last 24 hours of M4.5+ quakes with the previous 29 days, using
+  plain counts. No forecasting.
+- **Honest about its data:**
+  - shows how old the picture is;
+  - says when it is offline or stale;
+  - never drops records silently;
+  - keeps the last good data when a refresh fails.
+- **Made for a see-through display:**
+  - everything is light on dark, because dark pixels are transparent on the glasses;
+  - the panel and buttons are Snap's free Spectacles UI Kit.
+
+## How it was planned and built
+
+- **Planned** with the plan-lens skill pack. The brief is
+  [lens/devpost/design-brief.md](lens/devpost/design-brief.md). It now also holds the design notes
+  added after each review. The first notes came from an AI-assisted review that the learner
+  approved.
+- **Built** by Claude Code with Snap's CLAD plugin, in headless passes that drive Lens Studio
+  through its MCP server:
+  - the alert overlay;
+  - LEAF fixes;
+  - map detail;
+  - the two-stage alert;
+  - readability and a cover spot placed on real surfaces;
+  - the off-view arrow;
+  - the changes from the video review.
+
+  Each pass's prompt and report are in [docs/clad-build/](docs/clad-build/).
+- **Tested** with LEAF: one scenario for each done criterion, plus the home marker. They run in the
+  preview. At DEBUG level they also report any button that a real pointer couldn't reach.
+- **Not built through CLAD:**
+  - the first prototype, the live globe of 2026-10-19;
+  - the shared `core/`, `data/` and `tools/`;
+  - the two demo-video drivers, the LEAF scenarios `demo_alert` and `demo_globe`.
+
+  All of these were written with Claude Code.
 
 ## How it is built
 
@@ -56,11 +101,16 @@ core/            platform-independent TypeScript, no dependencies, unit-tested i
   occluder.ts    line radius; dark far hemisphere for the browser preview
   style.ts       colours, glow pulses, marker size
   config.ts      every tunable, shared by Lens and preview
-data/            Natural Earth coastlines (public domain), generated
-lens/            complete Lens Studio project (SPECS 27, Interaction Kit, UI Kit);
-                 scripts in lens/Assets/QuakeGlobe
+  geolookup.ts   great-circle distance and nearest-polyline search
+  plates.ts      nearest plate boundary ("Subduction zone, Pacific and Okhotsk plates, 40 km away"), subduction barbs
+  labels.ts      continent, ocean and country names: zoom budget, limb fade, no overlaps, pinned home
+  hazards.ts     alert event and hazard profile (the alert's wording); only the earthquake one ships
+data/            generated from Natural Earth (coastlines, label points) and PB2002 (plate boundaries)
+lens/            complete Lens Studio project (SPECS 27, Interaction Kit, UI Kit, LEAF);
+                 scripts in lens/Assets/QuakeGlobe, LEAF scenarios in Scripts/Tests,
+                 the plan-lens brief in lens/devpost
 web-preview/     three.js preview driven by the same core
-tests/           69 tests, including runs against real USGS snapshots
+tests/           98 tests, including runs against real USGS snapshots
 tools/           build, local server, coastline converter, Lens type-check
 ```
 
@@ -81,10 +131,11 @@ Design decisions and their reasons: [docs/DESIGN.md](docs/DESIGN.md).
 
 | Check | How |
 |---|---|
-| Core logic, including real USGS snapshots | `npm test` (69 tests) |
+| Core logic, including real USGS snapshots | `npm test` (98 tests) |
 | Rendering and orientation | browser preview; probes confirm a selected event lands at screen centre with east to the right and north up, and that the innermost atmosphere ring sits just outside the globe's outline |
 | Lens scripts against the real Lens Studio API | strict TypeScript check against the official declarations for Lens Studio 5.12, 5.19 and 5.24 with Interaction Kit 0.17.2 / 0.18.0 and UI Kit 0.1.5 / 2.0.0: `node tools/typecheck/check-lens.mjs --dts <studio.d.ts> --sik <SIK root> --uikit <UI Kit root>` |
 | Running in Lens Studio | Lens Studio 5.24.1, SPECS 27 Preview, driven through Lens Studio's built-in MCP server: compiles, loads live USGS data, zero runtime errors or warnings. Simulated hand pinches on **Strongest**, **30 days** and **24 h** produce the expected globe turn, highlight, epicentre ring, detail text, legend and window switch. The atmosphere scale read back from the running Lens matches the formula at 100 cm and, after a simulated drag, at 50 cm |
+| Done criteria in Lens Studio | LEAF scenarios in the SPECS 27 preview, one per done criterion plus the home marker: map detail, quake details, alert, cover spot (including the off-view arrow's direction), emergency contacts. Run one by one, in a row, and at DEBUG level, which reports any button a real pointer couldn't reach |
 | Runtime behaviour on hardware | independent review against Snap's samples and design guidelines; findings fixed. **Not yet run on a device.** |
 
 ## Run the tests and the preview
@@ -92,7 +143,7 @@ Design decisions and their reasons: [docs/DESIGN.md](docs/DESIGN.md).
 Requires Node 23.6 or newer (TypeScript runs natively; there are no packages to install).
 
 ```bash
-npm test          # 69 tests
+npm test          # 98 tests
 npm run preview   # builds, then serves http://localhost:8765/web-preview/
 ```
 
