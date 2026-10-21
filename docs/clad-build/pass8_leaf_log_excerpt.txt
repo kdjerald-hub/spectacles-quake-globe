@@ -17,10 +17,12 @@ is changed.
 22:24:32.669 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
 22:24:44.849 [DefaultLeafScenarioManager] [ 12.183s]FAILED: alert - AssertionError: No visible map label should overlap the epicentre ring (overlapping: ASIA, Sea of Japan, Indonesia, Bay of Bengal) Expected: "true" - Received: "false"
 22:24:44.851 [DefaultLeafScenarioManager] [ 12.185s][alert] FAILED - AssertionError: No visible map label should overlap the epicentre ring (overlapping: ASIA, Sea of Japan, Indonesia, Bay of Bengal) Expected: "true" - Received: "false"
+22:24:45.078 [LeafPlugin][PluginViewModel] ❌ Scenario alert failed.
 22:28:46.848 [LeafPlugin][PluginViewModel] Running scenario: alert
 22:29:58.144 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
 22:30:09.399 [DefaultLeafScenarioManager] [ 11.259s]FAILED: alert - AssertionError: No visible map label should overlap the epicentre ring (overlapping: Bay of Bengal, ASIA, Indonesia, Japan) Expected: "true" - Received: "false"
 22:30:09.401 [DefaultLeafScenarioManager] [ 11.261s][alert] FAILED - AssertionError: No visible map label should overlap the epicentre ring (overlapping: Bay of Bengal, ASIA, Indonesia, Japan) Expected: "true" - Received: "false"
+22:30:09.651 [LeafPlugin][PluginViewModel] ❌ Scenario alert failed.
 22:34:20.393 [LeafPlugin][PluginViewModel] Running scenario: alert
 22:36:29.713 [LeafPlugin][PluginViewModel] There is already a scenario running. The scene will be reset.
 22:36:29.766 [LeafPlugin][LeafChatTool] run_leaf_scenario failed: Scenario run cancelled

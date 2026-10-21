@@ -26,9 +26,9 @@ Made for the Learn AR with SPECS hackathon:
 
 **The alert moment (a simulation)**
 
-1. Before an alert, pinch **Set cover spot**. Look where you would take cover (official guidance puts
-   a sturdy table first), or at the floor beside you, and pinch. A world-query hit test places the
-   spot on that surface.
+1. Before an alert, pinch **Set cover spot**. Look where you would take cover, and pinch: under a
+   sturdy table, as official guidance says first, or by an inside wall away from windows. A
+   world-query hit test places the spot on that surface.
 2. Pinch **Phone alert received**, the stand-in for a real phone alert. A chime plays.
    - The card leads with Drop, Cover, Hold On and "Stay where you are".
    - The dashboard steps aside. The only button left is **Shaking stopped**.
