@@ -15,6 +15,6 @@ Each pass is one headless Claude Code session with Snap's ls-clad plugin, workin
 | [7](pass7.md) | The arrow's shape and the epicentre label | 84 | 15 | none |
 | [8](pass8.md) | The committee's second review: the Taiwan name, a real pinch test, the hint, the guidance line | 154 | 48 | lens-studio-router, specs-leaf-run-in-preview, preview-inspection |
 
-In all: 1067 turns, 5 h 33 min. The total is summed from each pass's exact duration, not from the rounded minutes above.
+In all: 1067 turns, 5 h 34 min. The total is summed from each pass's exact duration and then rounded to the minute, like each pass; it is not a sum of the rounded minutes above.
 
 Turns and minutes are Claude Code's own count. By the logs' clock, pass 3 took about 6 hours: it ran overnight, with long pauses between steps that Claude Code's count leaves out.

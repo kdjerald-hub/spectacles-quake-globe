@@ -33,7 +33,7 @@ map_detail: succeeded/succeeded/succeeded, quake_details: succeeded/succeeded/su
 
 ## Note
 
-Every LEAF call in this pass timed out at the MCP transport while the scenario was still queued, so the verdicts above are LEAF's own PASSED and FAILED lines from the Lens Studio log, matched to each call (pass8_leaf_verdicts.json, next to this page). One alert call started no run. The agent's report mentions one failed alert run; the log shows two, the second while it was diagnosing its new ring check, before the fix.
+Every LEAF call in this pass timed out at the MCP transport while the scenario was still queued, so the verdicts above are LEAF's own PASSED and FAILED lines from the Lens Studio log, matched to each call (pass8_leaf_verdicts.json). The log lines themselves are in pass8_leaf_log_excerpt.txt. One alert call started no run. The agent's report mentions one failed alert run; the log shows two, the second while it was diagnosing its new ring check, before the fix.
 
 ## The agent's final report
 

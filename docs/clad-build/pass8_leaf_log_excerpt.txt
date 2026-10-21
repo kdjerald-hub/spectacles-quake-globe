@@ -1,0 +1,64 @@
+LEAF's own scenario lines from the Lens Studio log during CLAD pass 8 (2026-10-21, local time),
+from the log file LensStudioLog-2026-10-20-09-05-28-407-83937.txt. Only lines from LEAF's
+DefaultLeafScenarioManager are kept, with the engine's prefix removed; nothing else is changed.
+
+22:20:17.981 [DefaultLeafScenarioManager] [  0.001s]RUNS: map_detail with args: []
+22:20:21.885 [DefaultLeafScenarioManager] [  3.909s]PASSED: map_detail
+22:20:21.885 [DefaultLeafScenarioManager] [  3.910s][map_detail] PASSED
+22:22:31.066 [DefaultLeafScenarioManager] [  0.001s]RUNS: quake_details with args: []
+22:22:36.592 [DefaultLeafScenarioManager] [  5.530s]PASSED: quake_details
+22:22:36.593 [DefaultLeafScenarioManager] [  5.532s][quake_details] PASSED
+22:24:32.669 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
+22:24:44.849 [DefaultLeafScenarioManager] [ 12.183s]FAILED: alert - AssertionError: No visible map label should overlap the epicentre ring (overlapping: ASIA, Sea of Japan, Indonesia, Bay of Bengal) Expected: "true" - Received: "false"
+22:24:44.851 [DefaultLeafScenarioManager] [ 12.185s][alert] FAILED - AssertionError: No visible map label should overlap the epicentre ring (overlapping: ASIA, Sea of Japan, Indonesia, Bay of Bengal) Expected: "true" - Received: "false"
+22:29:58.144 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
+22:30:09.399 [DefaultLeafScenarioManager] [ 11.259s]FAILED: alert - AssertionError: No visible map label should overlap the epicentre ring (overlapping: Bay of Bengal, ASIA, Indonesia, Japan) Expected: "true" - Received: "false"
+22:30:09.401 [DefaultLeafScenarioManager] [ 11.261s][alert] FAILED - AssertionError: No visible map label should overlap the epicentre ring (overlapping: Bay of Bengal, ASIA, Indonesia, Japan) Expected: "true" - Received: "false"
+22:38:19.817 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
+22:38:22.934 [DefaultLeafScenarioManager] [  3.134s]PASSED: alert
+22:38:22.934 [DefaultLeafScenarioManager] [  3.134s][alert] PASSED
+22:40:31.630 [DefaultLeafScenarioManager] [  0.000s]RUNS: cover_spot with args: []
+22:40:35.513 [DefaultLeafScenarioManager] [  3.886s]PASSED: cover_spot
+22:40:35.513 [DefaultLeafScenarioManager] [  3.886s][cover_spot] PASSED
+22:42:19.944 [DefaultLeafScenarioManager] [  0.000s]RUNS: emergency_contacts with args: []
+22:42:22.883 [DefaultLeafScenarioManager] [  2.942s]PASSED: emergency_contacts
+22:42:22.883 [DefaultLeafScenarioManager] [  2.942s][emergency_contacts] PASSED
+22:44:04.523 [DefaultLeafScenarioManager] [  0.001s]RUNS: home_marker with args: []
+22:44:10.578 [DefaultLeafScenarioManager] [  6.058s]PASSED: home_marker
+22:44:10.578 [DefaultLeafScenarioManager] [  6.059s][home_marker] PASSED
+22:46:18.069 [DefaultLeafScenarioManager] [  0.001s]RUNS: map_detail with args: []
+22:46:25.831 [DefaultLeafScenarioManager] [  7.767s]PASSED: map_detail
+22:46:25.833 [DefaultLeafScenarioManager] [  7.768s][map_detail] PASSED
+22:47:29.080 [DefaultLeafScenarioManager] [  0.000s]RUNS: quake_details with args: []
+22:47:33.474 [DefaultLeafScenarioManager] [  4.397s]PASSED: quake_details
+22:47:33.474 [DefaultLeafScenarioManager] [  4.397s][quake_details] PASSED
+22:47:44.628 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
+22:47:46.656 [DefaultLeafScenarioManager] [  2.031s]PASSED: alert
+22:47:46.656 [DefaultLeafScenarioManager] [  2.031s][alert] PASSED
+22:47:56.536 [DefaultLeafScenarioManager] [  0.000s]RUNS: cover_spot with args: []
+22:47:58.627 [DefaultLeafScenarioManager] [  2.093s]PASSED: cover_spot
+22:47:58.627 [DefaultLeafScenarioManager] [  2.093s][cover_spot] PASSED
+22:48:08.864 [DefaultLeafScenarioManager] [  0.000s]RUNS: emergency_contacts with args: []
+22:48:10.697 [DefaultLeafScenarioManager] [  1.833s]PASSED: emergency_contacts
+22:48:10.697 [DefaultLeafScenarioManager] [  1.833s][emergency_contacts] PASSED
+22:48:19.837 [DefaultLeafScenarioManager] [  0.000s]RUNS: home_marker with args: []
+22:48:21.312 [DefaultLeafScenarioManager] [  1.476s]PASSED: home_marker
+22:48:21.312 [DefaultLeafScenarioManager] [  1.476s][home_marker] PASSED
+22:48:35.859 [DefaultLeafScenarioManager] [  0.000s]RUNS: map_detail with args: []
+22:48:36.562 [DefaultLeafScenarioManager] [  0.704s]PASSED: map_detail
+22:48:36.562 [DefaultLeafScenarioManager] [  0.704s][map_detail] PASSED
+22:48:56.747 [DefaultLeafScenarioManager] [  0.000s]RUNS: quake_details with args: []
+22:48:58.319 [DefaultLeafScenarioManager] [  1.572s]PASSED: quake_details
+22:48:58.319 [DefaultLeafScenarioManager] [  1.572s][quake_details] PASSED
+22:49:16.560 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
+22:49:18.399 [DefaultLeafScenarioManager] [  1.839s]PASSED: alert
+22:49:18.399 [DefaultLeafScenarioManager] [  1.839s][alert] PASSED
+22:49:27.919 [DefaultLeafScenarioManager] [  0.000s]RUNS: cover_spot with args: []
+22:49:30.413 [DefaultLeafScenarioManager] [  2.496s]PASSED: cover_spot
+22:49:30.413 [DefaultLeafScenarioManager] [  2.496s][cover_spot] PASSED
+22:49:39.609 [DefaultLeafScenarioManager] [  0.000s]RUNS: emergency_contacts with args: []
+22:49:41.413 [DefaultLeafScenarioManager] [  1.805s]PASSED: emergency_contacts
+22:49:41.413 [DefaultLeafScenarioManager] [  1.805s][emergency_contacts] PASSED
+22:49:51.082 [DefaultLeafScenarioManager] [  0.000s]RUNS: home_marker with args: []
+22:49:52.560 [DefaultLeafScenarioManager] [  1.478s]PASSED: home_marker
+22:49:52.560 [DefaultLeafScenarioManager] [  1.478s][home_marker] PASSED
