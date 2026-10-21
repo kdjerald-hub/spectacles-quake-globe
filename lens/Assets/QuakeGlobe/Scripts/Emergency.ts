@@ -6,6 +6,7 @@
 // LEAF tests are the only callers.
 
 import type { Quake } from "../Core/usgs";
+import type { AlertEvent } from "../Core/hazards";
 import { EARTH_RADIUS_KM, geoToCartesian } from "../Core/geo";
 import { formatAge } from "../Core/freshness";
 import { nearestBoundary } from "../Core/plates";
@@ -38,6 +39,21 @@ export const SIMULATED_QUAKE: Quake = {
 export const SIMULATED_TIME_LABEL = "2024-04-03 07:58 local time";
 
 /**
+ * The simulated alert as a CAP-style event (Core/hazards.AlertEvent). The overlay picks its hazard
+ * profile with profileForAlert(SIMULATED_ALERT) rather than naming EARTHQUAKE directly, so another
+ * hazard plugs in as data. The `sent` time is SIMULATED_QUAKE.timeMs as ISO 8601.
+ */
+export const SIMULATED_ALERT: AlertEvent = {
+  event: "Earthquake",
+  sent: "2024-04-02T23:58:12.173Z",
+  senderName: "Simulation",
+  areaDesc: "Hualien County",
+  origin: { lat: SIMULATED_QUAKE.lat, lon: SIMULATED_QUAKE.lon, depthKm: SIMULATED_QUAKE.depthKm },
+  magnitude: SIMULATED_QUAKE.mag,
+  simulated: true,
+};
+
+/**
  * Default home: Hualien City, Taiwan. The 2024 alert reached Hualien (and 11 other counties); the
  * demo stands there. A pinch on the globe in set-home mode moves it; "Set as home" confirms. Having
  * a default means the alert always has a distance to show, even in a quick demo.
@@ -56,8 +72,9 @@ export const SEND_BUTTON_LABEL = "Send to emergency contacts";
 /** Shown once the send button is pinched; the "(simulated)" keeps the demo honest (nothing is sent). */
 export const SENT_MESSAGE = "Sent to emergency contacts (simulated)";
 export const SAFE_BUTTON_LABEL = "I'm safe";
-/** This event as reported on both scales: USGS moment magnitude and Taiwan CWA local magnitude. */
-export const SIMULATED_MAG_LABEL = "USGS M7.4 (Taiwan CWA: ML 7.2)";
+/** This event as reported on both scales: USGS moment magnitude, and Taiwan CWA local magnitude
+ * ML 7.1 from the CWA's official report No. 019 (7.2 was the first figure that morning). */
+export const SIMULATED_MAG_LABEL = "USGS M7.4 (Taiwan CWA: ML 7.1)";
 
 // ---- geometry / text helpers ---------------------------------------------
 
@@ -113,9 +130,9 @@ export function distanceFromHomeText(km: number): string {
 
 /**
  * The details shown once the shaking stops (alert stage "after"): the magnitude on both the USGS
- * and Taiwan CWA scales, depth, the local wall-clock time, the place, and the nearest plate
- * boundary (Core/plates.nearestBoundary). The simulated event is fixed, so the time is a fixed
- * label rather than a relative age.
+ * and Taiwan CWA scales, the depth with its source ("Depth 40 km (USGS)"), the local wall-clock
+ * time, the place, and the nearest plate boundary (Core/plates.nearestBoundary). The simulated
+ * event is fixed, so the time is a fixed label rather than a relative age.
  */
 export function alertDetailsText(): string {
   const q = SIMULATED_QUAKE;
@@ -123,7 +140,7 @@ export function alertDetailsText(): string {
   const boundary = nb ? "Nearest boundary: " + nb.text : "Nearest boundary: none nearby";
   return (
     SIMULATED_MAG_LABEL + "\n" +
-    "Depth " + Math.max(0, Math.round(q.depthKm)) + " km\n" +
+    "Depth " + Math.max(0, Math.round(q.depthKm)) + " km (USGS)\n" +
     SIMULATED_TIME_LABEL + "\n" +
     q.place + "\n" +
     boundary

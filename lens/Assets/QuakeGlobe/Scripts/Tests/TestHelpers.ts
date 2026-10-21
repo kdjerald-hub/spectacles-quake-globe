@@ -55,6 +55,14 @@ export function interactableReady(name: string): boolean {
   return !isNull(findInteractableByName(name, undefined, true));
 }
 
+/** The `.text` of the Text component on the first SceneObject named `name`, or undefined. */
+export function textOnObject(name: string): string | undefined {
+  const obj = findSceneObjectByName(name);
+  if (isNull(obj)) return undefined;
+  const t = obj.getComponent("Component.Text") as Text;
+  return isNull(t) ? undefined : t.text;
+}
+
 /**
  * The `.text` of the Text component on the SceneObject named `name` whose parent is `parentName`.
  * "Body" and "Status" each exist on more than one card, so the parent disambiguates them.
@@ -142,25 +150,27 @@ export async function triggerButton(interactor: DefaultLeafInteractor, name: str
 
 /**
  * Shared reset run at the start of every scenario, per the done-criteria contract:
- *   1. wait until the Lens has placed its Panel and "Button Spin" is reachable (up to 15 s), then
+ *   1. wait until the Lens has placed itself (up to 15 s), then
  *   2. dismiss any active alert, then
- *   3. clear any quake selection ("Button Spin", on the always-present Panel).
+ *   3. clear any quake selection ("Button Spin" on the Panel).
  * Leaves the Controls Card active with nothing selected. Scenarios share Lens state, so this
  * guarantees a known baseline regardless of execution order.
  *
- * The alert has two stages. "I'm safe" lives only on the "after" page, so if a previous scenario
- * left the alert mid-shake (the "during" page is up), advance it with "Shaking stopped" first, then
- * close it with "I'm safe".
+ * The Panel HIDES while an alert is open (the alert card takes its place), so "placed" shows up as
+ * either "Button Spin" reachable (no alert) or the Alert Card enabled (alert left open by an
+ * earlier scenario). Close any alert first: "I'm safe" lives only on the "after" page, so if the
+ * alert was left mid-shake (the "during" page is up), advance it with "Shaking stopped" first.
+ * The Panel returns when the alert closes; only then is Spin reachable.
  *
  * The Lens builds the Panel in onAwake but keeps it disabled until placeInFront() runs ~0.25 s
  * after start; LEAF only finds interactables that are enabled in the hierarchy. Pressing Spin
  * before then is what produced `Interactable "Button Spin" not found or not enabled`, so we wait
- * for it to be reachable before pressing anything.
+ * for the Lens to be placed before pressing anything.
  */
 export async function resetState(interactor: DefaultLeafInteractor): Promise<void> {
-  const ready = await waitUntil(() => interactableReady("Button Spin"), 15000);
-  if (!ready) {
-    throw new Error('Panel never became ready: "Button Spin" not found or not enabled within 15 s');
+  const placed = await waitUntil(() => interactableReady("Button Spin") || objectEnabled("Alert Card"), 15000);
+  if (!placed) {
+    throw new Error('Lens never placed itself: neither "Button Spin" nor the Alert Card showed up within 15 s');
   }
 
   if (objectEnabled("Alert Card")) {
@@ -170,6 +180,10 @@ export async function resetState(interactor: DefaultLeafInteractor): Promise<voi
     }
     await triggerButton(interactor, "Button I'm safe");
     await waitForEnabled("Alert Card", false);
+  }
+  const panelReady = await waitUntil(() => interactableReady("Button Spin"), 5000);
+  if (!panelReady) {
+    throw new Error('Panel never became ready: "Button Spin" not found or not enabled');
   }
   await triggerButton(interactor, "Button Spin");
   // The Controls Card self-enables with the Panel; by here it should already be up.

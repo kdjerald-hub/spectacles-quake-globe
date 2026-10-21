@@ -31,7 +31,7 @@ import {
   quatMultiply,
 } from "../Core/geo";
 import { GEOMETRY, SETTINGS } from "../Core/config";
-import { EARTHQUAKE, nextStage } from "../Core/hazards";
+import { EARTHQUAKE, nextStage, profileForAlert } from "../Core/hazards";
 import type { AlertStage } from "../Core/hazards";
 import { LINE_RADIUS_FACTOR } from "../Core/occluder";
 import { EPICENTER_COLOR, EPICENTER_PULSE, DEPTH_CLASS_COLORS, depthClass, pulse } from "../Core/style";
@@ -57,9 +57,11 @@ import {
   SAFE_BUTTON_LABEL,
   SEND_BUTTON_LABEL,
   SENT_MESSAGE,
+  SIMULATED_ALERT,
   SIMULATED_QUAKE,
   alertDetailsText,
   distanceFromHomeText,
+  formatDistanceKm,
   greatCircleKm,
   greatCirclePolyline,
   quakeCardText,
@@ -80,11 +82,20 @@ export interface GlobeContext {
   currentSpin: () => Quat;
   selectQuakeById: (id: string) => void;
   setManipulationEnabled: (enabled: boolean) => void;
+  /** Show or hide the main panel: it steps aside while an alert is open (video review 2026-10-21). */
+  setPanelVisible: (visible: boolean) => void;
 }
 
 type Mode = "normal" | "home" | "cover";
 
 const CARD_WIDTH_CM = 16;
+/**
+ * The alert card takes the panel's place while an alert is open (video review 2026-10-21): the
+ * panel's width, centred below the globe at the globe's depth (~1 m at the default placement).
+ * Matches PANEL_WIDTH_CM / PANEL_GAP_CM in QuakeGlobeLens so the swap is seamless.
+ */
+const ALERT_CARD_WIDTH_CM = 30;
+const ALERT_CARD_GAP_CM = 2.5;
 /**
  * Side cards sit a little behind the globe's plane. The visible display is narrow: with a 24 cm globe
  * at 1 m there is only ~6 degrees of view to each side of the globe's silhouette, so a card cannot be
@@ -116,14 +127,21 @@ const ARROW_AHEAD_CM = 60;
  * off-screen indicator at the edge of the view rather than a marker in the middle of it. The SPECS
  * 27 preview shows about ±16 degrees horizontally and ±18 vertically (±17 / ±20 cm at 60 cm); these
  * radii stay inside that with room for the arrow's own size, while clearing the globe's disc
- * (~7 degrees around centre) and the panel for the common diagonal directions. The left reach is
- * shorter than the right so the arrow stops at the alert card's inner edge (~9 degrees at its
- * depth) - during an alert that card is up on the left while the right side card is hidden.
+ * (~7 degrees around centre). The alert card now sits bottom-centre (it took the panel's place),
+ * right where a downward arrow would land, so the card is handled dynamically instead of by a
+ * per-side constant: updateArrow projects the card's plate into the arrow's plane and pushes the
+ * arrow sideways past the card's outer edge whenever it would land on the card.
  */
-const ARROW_EDGE_RIGHT_CM = 12.5;
-const ARROW_EDGE_LEFT_CM = 8.2;
+const ARROW_EDGE_SIDE_CM = 12.5;
 const ARROW_EDGE_UP_CM = 12;
 const ARROW_EDGE_DOWN_CM = 15;
+/** Clearance between the arrow's centre and the alert card's plate, in cm at ARROW_AHEAD_CM. */
+const ARROW_CARD_MARGIN_CM = 4;
+/** The arrow never gets pushed past this (cm at ARROW_AHEAD_CM): the display edge is ~±17. */
+const ARROW_MAX_SIDE_CM = 16;
+/** The cover-spot placement hint follows the line of sight: this far ahead and above centre (cm). */
+const HINT_AHEAD_CM = 70;
+const HINT_RAISE_CM = 9;
 /** How far the world-query ray reaches when probing for the real surface under the user's pinch (cm). */
 const PROBE_RANGE_CM = 600;
 /** A world-query hit counts as current for this long, so a pinch commits the surface just probed (s). */
@@ -142,7 +160,12 @@ function buildArrowMesh(size: number): TriangleMesh {
 
 export class EmergencyOverlay {
   private readonly ctx: GlobeContext;
-  private readonly profile = EARTHQUAKE;
+  /**
+   * The hazard profile is chosen from the simulated alert's CAP event type (profileForAlert), not
+   * named directly, so the wording follows the alert. EARTHQUAKE only backstops the type: the
+   * simulated alert's event is "Earthquake", which always matches.
+   */
+  private readonly profile = profileForAlert(SIMULATED_ALERT) ?? EARTHQUAKE;
   private mode: Mode = "normal";
 
   private homeConfirmed = false;
@@ -172,6 +195,8 @@ export class EmergencyOverlay {
   private detailsCard!: DetailsCard;
   private alertCard!: AlertCard;
   private hint!: Text;
+  /** "15 km from home" pinned above the epicentre ring on the globe (video review 2026-10-21). */
+  private epicenterLabel!: Text;
 
   private epicenterRingVisual!: RenderMeshVisual;
   private epicenterRingMaterial!: Material;
@@ -213,11 +238,12 @@ export class EmergencyOverlay {
     const content = this.ctx.content;
     const source = "Guidance: " + this.profile.guidanceSource;
 
-    // Alert card (both stages) and controls card to the left of the globe, details card to the
-    // right (see updatePoses). The card copy comes from the EARTHQUAKE hazard profile.
+    // Controls card to the left of the globe, details card to the right; the alert card (both
+    // stages) takes the panel's place below the globe while an alert is open (see updatePoses).
+    // The card copy comes from the hazard profile matching the simulated alert's event type.
     this.alertCard = new AlertCard(
       this.ctx.root,
-      CARD_WIDTH_CM,
+      ALERT_CARD_WIDTH_CM,
       {
         title: this.profile.title,
         simNote: ALERT_SIMULATION_NOTE,
@@ -256,6 +282,19 @@ export class EmergencyOverlay {
       font: this.ctx.font,
     });
     this.hint.getSceneObject().enabled = false;
+
+    // Distance label pinned above the epicentre ring ("15 km from home"), billboarded to the
+    // viewer each frame (updatePoses). Light warm, like the card's distance line: the quakes stay
+    // the only saturated colour.
+    this.epicenterLabel = createText(this.ctx.root, "Epicentre distance", new vec3(0, 0, 0), {
+      size: 44,
+      color: [1.0, 0.85, 0.6],
+      widthCm: 26,
+      heightCm: 1.6,
+      centered: true,
+      font: this.ctx.font,
+    });
+    this.epicenterLabel.getSceneObject().enabled = false;
 
     // Epicentre of the simulated quake (shown only during an alert).
     this.epicenterRingMaterial = glowMaterial(base, EPICENTER_COLOR);
@@ -335,9 +374,15 @@ export class EmergencyOverlay {
     this.refreshControls();
   }
 
-  /** The controls card shows while no alert is active; the alert card takes its place otherwise. */
+  /**
+   * The controls card and the main panel show while no alert is active. While an alert is open the
+   * dashboard steps aside: the panel and all its buttons hide (the alert card takes the panel's
+   * place), so the only thing to pinch while the ground shakes is "Shaking stopped". Both return
+   * when the alert closes with "I'm safe".
+   */
   private refreshControls(): void {
     this.controlsCard.setVisible(this.placed && !this.alertActive);
+    this.ctx.setPanelVisible(this.placed && !this.alertActive);
   }
 
   // ---------------------------------------------------------------- per-frame
@@ -399,15 +444,53 @@ export class EmergencyOverlay {
     const leftCenter = globeCenter.add(right.uniformScale(-offset)).add(back);
     const rightCenter = globeCenter.add(right.uniformScale(offset)).add(back);
     this.poseCard(this.controlsCard, leftCenter, camPos, this.controlsCard.contentHeightCm);
-    this.poseCard(this.alertCard, leftCenter, camPos, this.alertCard.contentHeightCm);
     this.poseCard(this.detailsCard, rightCenter, camPos, this.detailsCard.contentHeightCm);
 
-    // Hint floats just above the globe.
+    // The alert card takes the panel's place (video review 2026-10-21): centred below the globe at
+    // the globe's depth (~1 m at the default placement), top-anchored just below the silhouette so
+    // it never covers the globe's interior, following moves and resizes like the panel did. The
+    // panel itself hides while the alert is open (refreshControls).
+    if (this.alertCard.visible && !this.alertCard.anyHovered()) {
+      const cardTop = globeCenter.add(new vec3(0, -(this.ctx.globeRadiusCm * scale + ALERT_CARD_GAP_CM), 0));
+      const ct = this.alertCard.root.getTransform();
+      ct.setWorldPosition(cardTop);
+      ct.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(cardTop)))));
+    }
+
+    // Distance label pinned just below the epicentre ring, facing the viewer. Below, not above:
+    // the home marker and its pinned country label sit north of the epicentre (home is Hualien
+    // City, 15 km north), so a label above the ring would cover them. The epicentre faces the
+    // viewer during an alert (rotationOverride), so the label floats over the globe's face, still
+    // well clear of the alert card below the globe.
+    if (this.epicenterLabel.getSceneObject().enabled) {
+      const q = SIMULATED_QUAKE;
+      const surface = this.ctx.content
+        .getTransform()
+        .getWorldTransform()
+        .multiplyPoint(toLensVec(geoToCartesian(q.lat, q.lon, this.ctx.globeRadiusCm * LINE_RADIUS_FACTOR)));
+      const outward = surface.sub(globeCenter).normalize();
+      const labelPos = surface.add(outward.uniformScale(2.5 * scale)).add(new vec3(0, -4.2 * scale, 0));
+      const lt = this.epicenterLabel.getSceneObject().getTransform();
+      lt.setWorldPosition(labelPos);
+      lt.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(labelPos)))));
+    }
+
     if (this.hint.getSceneObject().enabled) {
-      const hintPos = globeCenter.add(new vec3(0, silhouetteR + 3, 0));
       const ht = this.hint.getSceneObject().getTransform();
-      ht.setWorldPosition(hintPos);
-      ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
+      if (this.mode === "cover") {
+        // While setting the cover spot the hint follows the line of sight (video review
+        // 2026-10-21): slightly above the view centre so it stays readable when the user looks
+        // down at a table or the floor, while leaving the centre clear for aiming the pinch.
+        const lookDir = cam.forward.uniformScale(-1).normalize();
+        const hintPos = camPos.add(lookDir.uniformScale(HINT_AHEAD_CM)).add(cam.up.uniformScale(HINT_RAISE_CM));
+        ht.setWorldPosition(hintPos);
+        ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
+      } else {
+        // Other hints float just above the globe, where the user is already looking.
+        const hintPos = globeCenter.add(new vec3(0, silhouetteR + 3, 0));
+        ht.setWorldPosition(hintPos);
+        ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
+      }
     }
 
     // Cover-spot placement plane catches a room pinch while setting the cover spot. Keep it beyond
@@ -461,10 +544,26 @@ export class EmergencyOverlay {
         const len = Math.hypot(rx, uy);
         const sx = len > 1e-5 ? rx / len : 1;
         const sy = len > 1e-5 ? uy / len : 0;
+        let ex = sx * ARROW_EDGE_SIDE_CM;
+        const ey = sy * (sy >= 0 ? ARROW_EDGE_UP_CM : ARROW_EDGE_DOWN_CM);
+        // The alert card sits bottom-centre, where a downward arrow would land. Project the card's
+        // plate into the arrow's plane; if the arrow would land on it, push the arrow sideways past
+        // the card's outer edge on the spot's side, clamped to the display edge.
+        const rect = this.cardRectInArrowPlane(camPos, lookDir, right, up);
+        if (
+          rect !== null &&
+          ex > rect.minX - ARROW_CARD_MARGIN_CM &&
+          ex < rect.maxX + ARROW_CARD_MARGIN_CM &&
+          ey > rect.minY - ARROW_CARD_MARGIN_CM &&
+          ey < rect.maxY + ARROW_CARD_MARGIN_CM
+        ) {
+          ex = sx >= 0 ? rect.maxX + ARROW_CARD_MARGIN_CM : rect.minX - ARROW_CARD_MARGIN_CM;
+          ex = Math.max(-ARROW_MAX_SIDE_CM, Math.min(ARROW_MAX_SIDE_CM, ex));
+        }
         const arrowPos = camPos
           .add(lookDir.uniformScale(ARROW_AHEAD_CM))
-          .add(right.uniformScale(sx * (sx >= 0 ? ARROW_EDGE_RIGHT_CM : ARROW_EDGE_LEFT_CM)))
-          .add(up.uniformScale(sy * (sy >= 0 ? ARROW_EDGE_UP_CM : ARROW_EDGE_DOWN_CM)));
+          .add(right.uniformScale(ex))
+          .add(up.uniformScale(ey));
         const spin = quat.angleAxis(Math.atan2(sy, sx), vec3.forward());
         const t = this.arrowRoot.getTransform();
         t.setWorldPosition(arrowPos);
@@ -476,6 +575,48 @@ export class EmergencyOverlay {
     }
     this.arrowShown = visible;
     if (this.arrowRoot.enabled !== visible) this.arrowRoot.enabled = visible;
+  }
+
+  /**
+   * The alert card's backplate as seen by the viewer, projected onto the arrow's plane (cm at
+   * ARROW_AHEAD_CM in the camera's right/up frame), so the arrow can keep clear of the card
+   * whatever the card's current distance or the globe's scale. Null when no card is up or it is
+   * out of usable range.
+   */
+  private cardRectInArrowPlane(
+    camPos: vec3,
+    lookDir: vec3,
+    right: vec3,
+    up: vec3,
+  ): { minX: number; maxX: number; minY: number; maxY: number } | null {
+    if (!this.alertCard.visible) return null;
+    const t = this.alertCard.root.getTransform();
+    const pos = t.getWorldPosition();
+    const rot = t.getWorldRotation();
+    const plate = this.alertCard.plateRect;
+    const corners = [
+      new vec3(-plate.halfWidthCm, plate.topCm, 0),
+      new vec3(plate.halfWidthCm, plate.topCm, 0),
+      new vec3(-plate.halfWidthCm, plate.bottomCm, 0),
+      new vec3(plate.halfWidthCm, plate.bottomCm, 0),
+    ];
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const c of corners) {
+      const world = pos.add(rot.multiplyVec3(c));
+      const v = world.sub(camPos);
+      const depth = v.dot(lookDir);
+      if (depth < 1) return null; // card at or behind the eyes: no meaningful projection
+      const px = (v.dot(right) / depth) * ARROW_AHEAD_CM;
+      const py = (v.dot(up) / depth) * ARROW_AHEAD_CM;
+      minX = Math.min(minX, px);
+      maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py);
+      maxY = Math.max(maxY, py);
+    }
+    return { minX, maxX, minY, maxY };
   }
 
   // ---------------------------------------------------------------- selection (details card)
@@ -535,6 +676,7 @@ export class EmergencyOverlay {
     this.alertCard.setDetails(alertDetailsText());
     this.alertCard.setStatus("");
     this.alertCard.setVisible(true);
+    this.setEpicenterLabel(km);
 
     this.alertFacing = quatMultiply(alignmentRotation(this.ctx.viewerDirectionInGlobe()), facingRotation(SIMULATED_QUAKE.lat, SIMULATED_QUAKE.lon));
     this.refreshControls();
@@ -566,6 +708,7 @@ export class EmergencyOverlay {
     this.alertFacing = null;
     this.alertCard.setStage("during");
     this.alertCard.setVisible(false);
+    this.epicenterLabel.getSceneObject().enabled = false;
     this.epicenterRingVisual.enabled = false;
     this.epicenterMarkerVisual.enabled = false;
     this.epicenterStemVisual.enabled = false;
@@ -616,7 +759,14 @@ export class EmergencyOverlay {
       this.showLine(this.homeLatLon);
       const km = greatCircleKm(this.homeLatLon.lat, this.homeLatLon.lon, SIMULATED_QUAKE.lat, SIMULATED_QUAKE.lon);
       this.alertCard.setDistance(distanceFromHomeText(km));
+      this.setEpicenterLabel(km);
     }
+  }
+
+  /** Show the on-globe epicentre label with the current home distance ("15 km from home"). */
+  private setEpicenterLabel(km: number): void {
+    this.epicenterLabel.text = formatDistanceKm(km) + " from home";
+    this.epicenterLabel.getSceneObject().enabled = true;
   }
 
   enterCoverMode(): void {

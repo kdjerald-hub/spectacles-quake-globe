@@ -17,7 +17,7 @@ import { PanelButton, createBackplate, createText, setText } from "./LensUi";
 import { createEmptyObject } from "./LensRender";
 
 const LINE_GAP_CM = 0.25;
-const PADDING_CM = 1.2;
+export const PADDING_CM = 1.2;
 /**
  * Side-card buttons are full width (one per row) so no label wraps - "Send to emergency contacts"
  * fit in a half-width button before. A taller button also reads better from a standing distance.
@@ -222,7 +222,12 @@ export class ControlsCard extends CardBase {
 }
 
 /** Stage one ("during"): headline, the "during" lines, the glanceable distance, SIMULATION, and
- * the single "Shaking stopped" button. Nothing else needs a gesture while the ground shakes. */
+ * the single "Shaking stopped" button. Nothing else needs a gesture while the ground shakes.
+ *
+ * The card took the panel's place below the globe (video review 2026-10-21), so it is the panel's
+ * width and ~1 m from the viewer; every size here is chosen to read in a 1080p screen recording
+ * from that distance, with the headline clearly the biggest thing on the card (one line at the
+ * panel width). */
 class AlertDuringPage extends CardBase {
   readonly advanceButton: PanelButton;
   private readonly distanceText: Text;
@@ -235,22 +240,21 @@ class AlertDuringPage extends CardBase {
     font?: Font,
   ) {
     super(parent, "Alert During", widthCm, font);
-    // The headline is by far the biggest text and leads the card: about twice the body size. On this
-    // narrow card it wraps to a few short lines ("Drop," / "Cover," / "Hold On"); reserve exactly the
-    // wrapped line count so it reads at a glance without spilling into the content below.
-    const headlineSize = 104;
+    // The headline leads the card and is by far the biggest text. At the panel width it fits on
+    // one line; wrapToLines still guards the layout if a longer hazard headline ever wraps.
+    const headlineSize = 100;
     const headlineLines = wrapToLines(opts.headline, charsPerLine(widthCm, headlineSize));
     this.line("Headline", headlineSize, GUIDE, headlineLines.length, true).text = headlineLines.join("\n");
     this.gap(0.5);
-    this.line("During", 46, BODY, Math.max(1, opts.during.length)).text = opts.during.join("\n");
+    this.line("During", 54, BODY, Math.max(1, opts.during.length)).text = opts.during.join("\n");
     this.gap(0.25);
-    this.distanceText = this.line("Distance", 50, WARN, 1);
-    this.line("Sim note", 42, WARN, 1).text = opts.simNote;
-    this.line("Source", 36, MUTED, 2).text = opts.source;
+    this.distanceText = this.line("Distance", 58, WARN, 1);
+    this.line("Sim note", 46, WARN, 1).text = opts.simNote;
+    this.line("Source", 38, MUTED, 2).text = opts.source;
     this.gap(0.6);
-    const h = SIDE_BUTTON_H;
+    const h = 5;
     const row = this.y - h / 2;
-    this.advanceButton = new PanelButton(this.root, opts.advanceLabel, new vec3(0, row, 0), widthCm, h, false, onAdvance, font);
+    this.advanceButton = new PanelButton(this.root, opts.advanceLabel, new vec3(0, row, 0), widthCm, h, false, onAdvance, font, 44);
     this.buttons.push(this.advanceButton);
     this.y = row - h / 2;
     this.finishPlate();
@@ -262,7 +266,12 @@ class AlertDuringPage extends CardBase {
 }
 
 /** Stage two ("after"): the event details, the "after" guidance, SIMULATION, the send result, and
- * the "Send to emergency contacts" and "I'm safe" buttons. */
+ * the "Send to emergency contacts" and "I'm safe" buttons.
+ *
+ * Like the "during" page, this page is the panel's width below the globe. The two buttons share
+ * one row (half width each): at the panel width neither label wraps — the one-line-label rule
+ * that made the old narrow side cards go full width — and the single row keeps this dense page
+ * short enough to stay inside the view from the default camera. */
 class AlertAfterPage extends CardBase {
   private readonly detailsText: Text;
   private readonly statusText: Text;
@@ -278,25 +287,22 @@ class AlertAfterPage extends CardBase {
     font?: Font,
   ) {
     super(parent, "Alert After", widthCm, font);
-    this.line("Title", 50, TITLE, 1).text = opts.title;
-    this.line("Sim note", 42, WARN, 1).text = opts.simNote;
+    this.line("Title", 52, TITLE, 1).text = opts.title;
+    this.line("Sim note", 46, WARN, 1).text = opts.simNote;
     this.gap(0.3);
-    // Five detail items: magnitude (both scales), depth, local time, place, nearest boundary; the
-    // place and the boundary can each wrap, so reserve seven lines. This dense block stays a little
-    // smaller than the headline/body so it still fits the seven lines on a narrow card.
-    this.detailsText = this.line("Details", 38, BODY, 7);
+    // Five detail items: magnitude (both scales), depth with source, local time, place, nearest
+    // boundary; only the boundary wraps at this width, so reserve six lines.
+    this.detailsText = this.line("Details", 42, BODY, 6);
     this.gap(0.2);
-    this.line("After", 42, GUIDE, Math.max(1, opts.after.length) + 1).text = opts.after.join("\n");
-    this.line("Source", 36, MUTED, 2).text = opts.source;
-    this.statusText = this.line("Status", 42, WARN, 2);
+    this.line("After", 44, GUIDE, Math.max(1, opts.after.length) + 1).text = opts.after.join("\n");
+    this.line("Source", 38, MUTED, 2).text = opts.source;
+    this.statusText = this.line("Status", 44, WARN, 1);
     this.gap(0.5);
-    // Both buttons are full width, one per row, so neither label wraps ("Send to emergency contacts"
-    // used to wrap in a half-width button).
-    const h = SIDE_BUTTON_H;
-    let row = this.y - h / 2;
-    this.sendButton = new PanelButton(this.root, opts.sendLabel, new vec3(0, row, 0), widthCm, h, false, onSend, font);
-    row -= h + BUTTON_STACK_GAP;
-    this.safeButton = new PanelButton(this.root, opts.safeLabel, new vec3(0, row, 0), widthCm, h, false, onSafe, font);
+    const h = 4.6;
+    const w2 = (widthCm - BUTTON_STACK_GAP) / 2;
+    const row = this.y - h / 2;
+    this.sendButton = new PanelButton(this.root, opts.sendLabel, new vec3(-widthCm / 2 + w2 / 2, row, 0), w2, h, false, onSend, font, 36);
+    this.safeButton = new PanelButton(this.root, opts.safeLabel, new vec3(widthCm / 2 - w2 / 2, row, 0), w2, h, false, onSafe, font, 36);
     this.buttons.push(this.sendButton, this.safeButton);
     this.y = row - h / 2;
     this.finishPlate();
@@ -320,6 +326,7 @@ export class AlertCard {
   readonly root: SceneObject;
   private readonly duringPage: AlertDuringPage;
   private readonly afterPage: AlertAfterPage;
+  private readonly widthCm: number;
   private stage: "during" | "after" = "during";
 
   constructor(
@@ -340,6 +347,7 @@ export class AlertCard {
     font?: Font,
   ) {
     this.root = createEmptyObject("Alert Card", parent);
+    this.widthCm = widthCm;
     this.duringPage = new AlertDuringPage(
       this.root,
       widthCm,
@@ -379,6 +387,19 @@ export class AlertCard {
   /** The active stage's content height, so the Lens centres whichever page is showing. */
   get contentHeightCm(): number {
     return this.stage === "during" ? this.duringPage.contentHeightCm : this.afterPage.contentHeightCm;
+  }
+
+  /**
+   * The active stage's backplate rectangle in the card root's local frame (matches finishPlate:
+   * the plate reaches 1.5 paddings above the content top and half a padding below its bottom).
+   * The overlay projects it into the view to keep the off-view arrow clear of the card.
+   */
+  get plateRect(): { halfWidthCm: number; topCm: number; bottomCm: number } {
+    return {
+      halfWidthCm: this.widthCm / 2 + PADDING_CM,
+      topCm: 1.5 * PADDING_CM,
+      bottomCm: -this.contentHeightCm - PADDING_CM / 2,
+    };
   }
 
   get currentStage(): "during" | "after" {

@@ -25,7 +25,14 @@ export class EmergencyContactsScenario extends Scenario {
     expect(objectEnabled("Alert After"), "The 'after' page should show after Shaking stopped").toBe(true);
     const details = textUnderParent("Details", "Alert After");
     expect(details !== undefined, "Details text should exist on the 'after' page").toBe(true);
-    expect(details.includes("M7.4"), `Details should show the magnitude - got "${details}"`).toBe(true);
+    expect(
+      details.includes("USGS M7.4 (Taiwan CWA: ML 7.1)"),
+      `Details should show the magnitude on both scales - got "${details}"`,
+    ).toBe(true);
+    expect(
+      details.includes("Depth 40 km (USGS)"),
+      `Details should show the sourced depth - got "${details}"`,
+    ).toBe(true);
 
     // Send to the emergency contacts.
     await triggerButton(interactor, "Button Send to emergency contacts");

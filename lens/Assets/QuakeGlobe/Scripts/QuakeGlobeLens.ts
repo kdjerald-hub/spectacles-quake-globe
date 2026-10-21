@@ -312,6 +312,12 @@ export class QuakeGlobeLens extends BaseScriptComponent {
       setManipulationEnabled: (enabled: boolean) => {
         this.manipulation.enabled = enabled;
       },
+      // The dashboard steps aside while an alert is open (video review 2026-10-21): hiding the
+      // Panel object hides every panel button with it, so none is reachable during the alert.
+      setPanelVisible: (visible: boolean) => {
+        const show = visible && this.placed;
+        if (this.panel.enabled !== show) this.panel.enabled = show;
+      },
     };
   }
 
@@ -691,7 +697,7 @@ export class QuakeGlobeLens extends BaseScriptComponent {
    * viewer. It holds still while a button is targeted, so a press is not lost to head motion.
    */
   private updatePanelPose(): void {
-    if (!this.placed) return;
+    if (!this.placed || !this.panel.enabled) return;
     for (const b of this.buttons) if (b.isHovered()) return;
     const g = this.handle.getTransform();
     const scale = g.getWorldScale().y;
