@@ -109,6 +109,21 @@ const PICK_SLOTS = 12;
 const PICK_RADIUS_FACTOR = 1.03;
 /** Half-angle of the "comfortably in view" cone; the arrow shows when the cover spot is outside it. */
 const IN_VIEW_HALF_COS = Math.cos((26 * Math.PI) / 180);
+/** The off-view arrow floats this far ahead of the eyes (cm). */
+const ARROW_AHEAD_CM = 60;
+/**
+ * How far from the view centre the arrow sits (cm at ARROW_AHEAD_CM), per side, so it reads as an
+ * off-screen indicator at the edge of the view rather than a marker in the middle of it. The SPECS
+ * 27 preview shows about ±16 degrees horizontally and ±18 vertically (±17 / ±20 cm at 60 cm); these
+ * radii stay inside that with room for the arrow's own size, while clearing the globe's disc
+ * (~7 degrees around centre) and the panel for the common diagonal directions. The left reach is
+ * shorter than the right so the arrow stops at the alert card's inner edge (~9 degrees at its
+ * depth) - during an alert that card is up on the left while the right side card is hidden.
+ */
+const ARROW_EDGE_RIGHT_CM = 12.5;
+const ARROW_EDGE_LEFT_CM = 8.2;
+const ARROW_EDGE_UP_CM = 12;
+const ARROW_EDGE_DOWN_CM = 15;
 /** How far the world-query ray reaches when probing for the real surface under the user's pinch (cm). */
 const PROBE_RANGE_CM = 600;
 /** A world-query hit counts as current for this long, so a pinch commits the surface just probed (s). */
@@ -262,9 +277,9 @@ export class EmergencyOverlay {
     createMeshObject("Cover beam", this.coverSpotRoot, triangleRenderMesh(buildPrism({ x: 0, y: 0, z: 0 }, { x: 0, y: 34, z: 0 }, 1.4)), coverMat);
     this.coverSpotRoot.enabled = false;
 
-    // Off-view arrow, posed in front of the camera each frame.
+    // Off-view arrow: a small edge-of-view indicator, posed near the view edge each frame.
     this.arrowRoot = createEmptyObject("Cover spot arrow", this.ctx.root);
-    createMeshObject("Arrow", this.arrowRoot, triangleRenderMesh(buildArrowMesh(3.2)), glowMaterial(base, COVER_COLOR));
+    createMeshObject("Arrow", this.arrowRoot, triangleRenderMesh(buildArrowMesh(1.8)), glowMaterial(base, COVER_COLOR));
     this.arrowRoot.enabled = false;
 
     // Large invisible plane that catches a pinch "in the room" while setting the cover spot.
@@ -420,8 +435,16 @@ export class EmergencyOverlay {
 
   /**
    * The off-view arrow points to the cover spot while the ground shakes (stage "during") and the
-   * spot is outside the comfortable forward cone. It chimes the moment the spot leaves view, but not
-   * on top of the alert's own onset chime.
+   * spot is outside the comfortable forward cone. It sits near the edge of the view on the spot's
+   * side (an off-screen indicator, not a marker in the middle of the view) and chimes the moment
+   * the spot leaves view, but not on top of the alert's own onset chime.
+   *
+   * The rotation is built from the camera's own axes: the camera's world rotation IS the screen
+   * frame, so spinning about its Z by atan2(uy, rx) points the mesh tip (local +X) at the spot's
+   * on-screen direction in every camera pose. (The previous alignmentRotation billboard was
+   * roll-free in WORLD terms - its X axis is forced horizontal and its yaw collapses as the
+   * arrow-to-camera direction nears vertical - so with the camera pitched down at a floor-level
+   * cover spot the spin lost its screen reference and the arrow could point up to 180 degrees off.)
    */
   private updateArrow(cam: Transform, camPos: vec3): void {
     const canShow = this.alertActive && this.stage === "during" && this.coverSpotWorld !== null;
@@ -435,13 +458,17 @@ export class EmergencyOverlay {
         const up = cam.up;
         const rx = dir.dot(right);
         const uy = dir.dot(up);
-        const angle = Math.atan2(uy, rx);
-        const arrowPos = camPos.add(lookDir.uniformScale(60)).add(right.uniformScale(rx * 10)).add(up.uniformScale(uy * 10));
-        const billboard = alignmentRotation(fromLensVec(camPos.sub(arrowPos)));
-        const spin = quatFromAxisAngle({ x: 0, y: 0, z: 1 }, angle);
+        const len = Math.hypot(rx, uy);
+        const sx = len > 1e-5 ? rx / len : 1;
+        const sy = len > 1e-5 ? uy / len : 0;
+        const arrowPos = camPos
+          .add(lookDir.uniformScale(ARROW_AHEAD_CM))
+          .add(right.uniformScale(sx * (sx >= 0 ? ARROW_EDGE_RIGHT_CM : ARROW_EDGE_LEFT_CM)))
+          .add(up.uniformScale(sy * (sy >= 0 ? ARROW_EDGE_UP_CM : ARROW_EDGE_DOWN_CM)));
+        const spin = quat.angleAxis(Math.atan2(sy, sx), vec3.forward());
         const t = this.arrowRoot.getTransform();
         t.setWorldPosition(arrowPos);
-        t.setWorldRotation(toLensQuat(quatMultiply(billboard, spin)));
+        t.setWorldRotation(cam.getWorldRotation().multiply(spin));
       }
     }
     if (visible && !this.arrowShown && this.elapsed - this.alertStartElapsed > 0.8) {
