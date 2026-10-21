@@ -19,26 +19,27 @@ export class DemoAlertScenario extends Scenario {
     await waitForQuakes();
     print("DEMO: start");
     await wait(2000);
+    // The waits give each caption time to be read (about 3 words a second).
     await triggerButton(interactor, "Button Set cover spot");
     print("DEMO: cover"); // the camera looks down at the floor
-    await wait(2600);
+    await wait(3000);
     await triggerButton(interactor, "Cover spot placement");
-    print("DEMO: placed"); // the camera looks back up
-    await wait(2800);
+    print("DEMO: placed"); // the camera stays on the spot, then looks back up
+    await wait(4500);
     await triggerButton(interactor, "Button Phone alert received");
     print("DEMO: alert");
-    await wait(5000);
+    await wait(8000);
     print("DEMO: look"); // the camera turns to the cover spot and back
-    await wait(6500);
+    await wait(8500);
     await triggerButton(interactor, "Button Shaking stopped");
     print("DEMO: stopped");
-    await wait(6500);
+    await wait(7500);
     await triggerButton(interactor, "Button Send to emergency contacts");
     print("DEMO: sent");
-    await wait(3500);
+    await wait(4500);
     await triggerButton(interactor, "Button I'm safe");
     print("DEMO: safe");
-    await wait(2500);
+    await wait(3500);
     print("DEMO: end");
   }
 }
