@@ -21,6 +21,10 @@ Before saving the scene, delete any "AiPreviewAgent Handler" object; keep LeafIn
 Report: the cause of each bug, what you changed, the LEAF table, and every file you changed.
 ```
 
+## CLAD skills loaded in this pass
+
+specs-leaf-run-in-preview, specs-leaf-write-scenarios
+
 ## LEAF runs in this pass (in order)
 
 cover_spot: succeeded/succeeded/succeeded/succeeded, map_detail: succeeded/succeeded, quake_details: succeeded/succeeded, alert: succeeded/succeeded, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded

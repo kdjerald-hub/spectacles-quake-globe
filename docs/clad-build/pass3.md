@@ -46,6 +46,10 @@ Before saving the scene, delete any "AiPreviewAgent Handler" object; keep LeafIn
 Report: what changed, a LEAF table (every scenario, pass or fail), the probe-hit results, any warnings, and every file you changed.
 ```
 
+## CLAD skills loaded in this pass
+
+none
+
 ## LEAF runs in this pass (in order)
 
 map_detail: succeeded/succeeded, quake_details: succeeded/succeeded/timed out, alert: succeeded/succeeded/succeeded/timed out, cover_spot: succeeded/succeeded/timed out/timed out, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded

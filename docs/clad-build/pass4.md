@@ -20,6 +20,10 @@ Read the design brief at lens/devpost/design-brief.md (inside this folder as dev
 Report: what changed (with the new text sizes), a LEAF table (every scenario, pass or fail), the probe-hit results, how the cover spot is placed now, and every file you changed.
 ```
 
+## CLAD skills loaded in this pass
+
+specs-world-query
+
 ## LEAF runs in this pass (in order)
 
 map_detail: succeeded/succeeded, quake_details: succeeded/succeeded, alert: succeeded/succeeded, cover_spot: failed/succeeded/succeeded, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded

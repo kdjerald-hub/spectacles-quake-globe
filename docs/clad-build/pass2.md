@@ -25,6 +25,10 @@ Build:
 Report: what you built, a LEAF table (every scenario, pass or fail), any warnings, and every file you changed.
 ```
 
+## CLAD skills loaded in this pass
+
+none
+
 ## LEAF runs in this pass (in order)
 
 map_detail: succeeded/succeeded, quake_details: succeeded/succeeded, alert: succeeded/succeeded, safe_spot_arrow: succeeded/succeeded, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded

@@ -26,6 +26,10 @@ The scene open in Lens Studio has unsaved changes: a LeafIndex root object (keep
 Report: a table of the 5 scenarios (pass or fail, and what you changed for each), any "probe hit" findings, which done criteria have no test yet, and every file you changed.
 ```
 
+## CLAD skills loaded in this pass
+
+specs-leaf-run-in-preview, specs-leaf-write-scenarios
+
 ## LEAF runs in this pass (in order)
 
 quake_details: succeeded/succeeded/succeeded, alert: succeeded/succeeded/succeeded, safe_spot_arrow: succeeded/succeeded/succeeded, emergency_contacts: succeeded/succeeded/succeeded, home_marker: succeeded/succeeded/succeeded

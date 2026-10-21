@@ -17,6 +17,10 @@ Finish the previous pass. Lens Studio quit at its very end and has been reopened
 Report: the LEAF table (five scenarios, pass or fail), the probe-hit result, the chime result, and every file you changed.
 ```
 
+## CLAD skills loaded in this pass
+
+none
+
 ## LEAF runs in this pass (in order)
 
 safe_spot_arrow: succeeded/succeeded/succeeded, quake_details: succeeded/succeeded, alert: succeeded/succeeded/succeeded, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded

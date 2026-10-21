@@ -17,6 +17,10 @@ Notes for this build (they also appear in AGENTS.md):
 - At the end, list every file you created or changed, which LEAF scenarios pass, and which done criteria have no test.
 ```
 
+## CLAD skills loaded in this pass
+
+specs-leaf-write-scenarios, build-sfx, lens-studio-field-notes, specs-leaf-install-packages, specs-leaf-run-in-preview
+
 ## LEAF runs in this pass (in order)
 
 quake_details: failed

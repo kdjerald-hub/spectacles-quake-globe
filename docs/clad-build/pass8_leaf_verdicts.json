@@ -1,0 +1,155 @@
+{
+ "window": [
+  "22:04:50",
+  "22:52:12"
+ ],
+ "calls": [
+  {
+   "call": "22:18:44",
+   "scenario": "map_detail",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:20:21"
+  },
+  {
+   "call": "22:20:49",
+   "scenario": "quake_details",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:22:36"
+  },
+  {
+   "call": "22:22:50",
+   "scenario": "alert",
+   "debug": false,
+   "verdict": "failed",
+   "at": "22:24:44"
+  },
+  {
+   "call": "22:28:39",
+   "scenario": "alert",
+   "debug": false,
+   "verdict": "failed",
+   "at": "22:30:09"
+  },
+  {
+   "call": "22:32:07",
+   "scenario": "alert",
+   "debug": false,
+   "verdict": null,
+   "at": null
+  },
+  {
+   "call": "22:36:29",
+   "scenario": "alert",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:38:22"
+  },
+  {
+   "call": "22:38:33",
+   "scenario": "cover_spot",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:40:35"
+  },
+  {
+   "call": "22:40:42",
+   "scenario": "emergency_contacts",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:42:22"
+  },
+  {
+   "call": "22:42:29",
+   "scenario": "home_marker",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:44:10"
+  },
+  {
+   "call": "22:44:23",
+   "scenario": "map_detail",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:46:25"
+  },
+  {
+   "call": "22:46:34",
+   "scenario": "quake_details",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:47:33"
+  },
+  {
+   "call": "22:47:39",
+   "scenario": "alert",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:47:46"
+  },
+  {
+   "call": "22:47:51",
+   "scenario": "cover_spot",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:47:58"
+  },
+  {
+   "call": "22:48:03",
+   "scenario": "emergency_contacts",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:48:10"
+  },
+  {
+   "call": "22:48:15",
+   "scenario": "home_marker",
+   "debug": false,
+   "verdict": "succeeded",
+   "at": "22:48:21"
+  },
+  {
+   "call": "22:48:31",
+   "scenario": "map_detail",
+   "debug": true,
+   "verdict": "succeeded",
+   "at": "22:48:36"
+  },
+  {
+   "call": "22:48:51",
+   "scenario": "quake_details",
+   "debug": true,
+   "verdict": "succeeded",
+   "at": "22:48:58"
+  },
+  {
+   "call": "22:49:11",
+   "scenario": "alert",
+   "debug": true,
+   "verdict": "succeeded",
+   "at": "22:49:18"
+  },
+  {
+   "call": "22:49:23",
+   "scenario": "cover_spot",
+   "debug": true,
+   "verdict": "succeeded",
+   "at": "22:49:30"
+  },
+  {
+   "call": "22:49:34",
+   "scenario": "emergency_contacts",
+   "debug": true,
+   "verdict": "succeeded",
+   "at": "22:49:41"
+  },
+  {
+   "call": "22:49:46",
+   "scenario": "home_marker",
+   "debug": true,
+   "verdict": "succeeded",
+   "at": "22:49:52"
+  }
+ ]
+}

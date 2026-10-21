@@ -1,9 +1,10 @@
 # Live Quake Globe
 
 When the earthquake alert hits your phone, this Lens for Snap Spectacles (SPECS) shows what the phone
-can't. Drop, Cover, Hold On comes first. Your cover spot is marked in your room. On a live globe in
-front of you, it shows where the quake struck and how far that is from home. After the shaking it
-shows what happened and which plates met, and one pinch tells your emergency contacts.
+can't. Drop, Cover, Hold On comes first. Your cover spot is marked in your room. Once the quake's
+location is known, a live globe in front of you shows where it struck and how far that is from
+home. After the shaking it shows what happened and which plates met, and one pinch tells your
+emergency contacts.
 
 Made for the Learn AR with SPECS hackathon:
 - planned with Snap's plan-lens skill pack;
@@ -75,11 +76,14 @@ Made for the Learn AR with SPECS hackathon:
   - readability and a cover spot placed on real surfaces;
   - the off-view arrow;
   - the changes from the video review;
-  - the arrow's shape and the epicentre label, after a full-size check of the second cut.
+  - the arrow's shape and the epicentre label, after a full-size check of the second cut;
+  - the committee's second review: map names step aside from the epicentre ring, the quake-details
+    test pinches a quake on the globe, and the cover-spot hint and the guidance line read better.
 
   Each pass's prompt and report are in [docs/clad-build/](docs/clad-build/).
 - **Tested** with LEAF: one scenario for each done criterion, plus the home marker. They run in the
-  preview. At DEBUG level they also report any button that a real pointer couldn't reach.
+  preview. At DEBUG level LEAF also checks that a ray from the viewer reaches every button it
+  presses.
 - **Not built through CLAD:**
   - the first prototype, the live globe of 2026-10-19;
   - the shared `core/`, `data/` and `tools/`;
@@ -136,7 +140,7 @@ Design decisions and their reasons: [docs/DESIGN.md](docs/DESIGN.md).
 | Rendering and orientation | browser preview; probes confirm a selected event lands at screen centre with east to the right and north up, and that the innermost atmosphere ring sits just outside the globe's outline |
 | Lens scripts against the real Lens Studio API | strict TypeScript check against the official declarations for Lens Studio 5.12, 5.19 and 5.24 with Interaction Kit 0.17.2 / 0.18.0 and UI Kit 0.1.5 / 2.0.0: `node tools/typecheck/check-lens.mjs --dts <studio.d.ts> --sik <SIK root> --uikit <UI Kit root>` |
 | Running in Lens Studio | Lens Studio 5.24.1, SPECS 27 Preview, driven through Lens Studio's built-in MCP server: compiles, loads live USGS data, zero runtime errors or warnings. Simulated hand pinches on **Strongest**, **30 days** and **24 h** produce the expected globe turn, highlight, epicentre ring, detail text, legend and window switch. The atmosphere scale read back from the running Lens matches the formula at 100 cm and, after a simulated drag, at 50 cm |
-| Done criteria in Lens Studio | LEAF scenarios in the SPECS 27 preview, one per done criterion plus the home marker: map detail, quake details, alert, cover spot (including the off-view arrow's direction), emergency contacts. Run one by one, in a row, and at DEBUG level, which reports any button a real pointer couldn't reach |
+| Done criteria in Lens Studio | LEAF scenarios in the SPECS 27 preview, one per done criterion plus the home marker: map detail, quake details, alert, cover spot (including the off-view arrow's direction), emergency contacts. Run one by one, in a row, and at DEBUG level, which checks that a ray from the viewer reaches every button a scenario presses |
 | Runtime behaviour on hardware | independent review against Snap's samples and design guidelines; findings fixed. **Not yet run on a device.** |
 
 ## Run the tests and the preview
