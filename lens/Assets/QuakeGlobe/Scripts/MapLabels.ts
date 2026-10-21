@@ -13,7 +13,7 @@
 
 import { LABEL_CANDIDATES } from "../Data/labels";
 import { DEFAULT_LABEL_CONFIG, activeLabelIds, layoutLabels, nearestCountryLabelId } from "../Core/labels";
-import type { LabelConfig, LabelMemory, LabelView, PlacedLabel } from "../Core/labels";
+import type { Box, LabelConfig, LabelMemory, LabelView, PlacedLabel } from "../Core/labels";
 import { createText } from "./LensUi";
 import { createEmptyObject, toLensQuat, toLensVec } from "./LensRender";
 
@@ -81,8 +81,9 @@ export class MapLabels {
    * Recompute which labels show and where, for the given globe view and home point. Call a few
    * times a second: the layout walks every candidate, so running it every frame is wasteful and
    * the output barely changes between frames. `dt` advances the layout's own dwell/hysteresis clock.
+   * `obstacles` are view-angle boxes no label may cover (the epicentre distance label during an alert).
    */
-  relayout(view: LabelView, home: { lat: number; lon: number }, selectionActive: boolean, dt: number): void {
+  relayout(view: LabelView, home: { lat: number; lon: number }, selectionActive: boolean, dt: number, obstacles: Box[] = []): void {
     this.nowS += dt;
     const homeKey = home.lat.toFixed(2) + "," + home.lon.toFixed(2);
     if (homeKey !== this.homeKey) {
@@ -90,7 +91,7 @@ export class MapLabels {
       this.homeId = nearestCountryLabelId(LABEL_CANDIDATES, home.lat, home.lon);
     }
     const pinned = this.homeId ? new Set<string>([this.homeId]) : new Set<string>();
-    const result = layoutLabels(LABEL_CANDIDATES, view, this.cfg, this.memory, this.nowS, [], selectionActive, this.boosted, pinned);
+    const result = layoutLabels(LABEL_CANDIDATES, view, this.cfg, this.memory, this.nowS, obstacles, selectionActive, this.boosted, pinned);
     this.memory = result.memory;
     this.assign(result.placed);
   }

@@ -92,6 +92,18 @@ export class SafeSpotArrowScenario extends Scenario {
       `Arrow (and its tip) should stay fully inside the view (arrow (${sArrow.x.toFixed(3)}, ${sArrow.y.toFixed(3)}), tip (${sTip.x.toFixed(3)}, ${sTip.y.toFixed(3)}))`,
     ).toBe(true);
 
+    // The arrow reads as a dart, not a near-equilateral triangle (second-cut check 2026-10-21):
+    // its mesh runs longer along the tip axis (local X) than it is wide (local Y).
+    expect(arrowObj!.getChildrenCount() > 0, "Cover spot arrow should carry a mesh child").toBe(true);
+    const arrowVisual = arrowObj!.getChild(0).getComponent("Component.RenderMeshVisual") as RenderMeshVisual;
+    expect(!isNull(arrowVisual) && !isNull(arrowVisual.mesh), "Arrow mesh should exist under Cover spot arrow").toBe(true);
+    const arrowLength = arrowVisual.mesh.aabbMax.x - arrowVisual.mesh.aabbMin.x;
+    const arrowWidth = arrowVisual.mesh.aabbMax.y - arrowVisual.mesh.aabbMin.y;
+    expect(
+      arrowLength > arrowWidth,
+      `Arrow mesh should be longer than it is wide (length ${arrowLength.toFixed(2)} cm, width ${arrowWidth.toFixed(2)} cm)`,
+    ).toBe(true);
+
     const headline = textUnderParent("Headline", "Alert During");
     expect(headline !== undefined, "Headline text should exist on the alert card").toBe(true);
     // The headline is shown very large and wraps to a few short lines on the narrow card, so compare

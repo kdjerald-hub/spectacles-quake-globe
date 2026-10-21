@@ -11,8 +11,9 @@ import { Scenario } from "Leaf.lspkg/Scenarios/scenario/Scenario";
 import { ScenarioConfig } from "Leaf.lspkg/Scenarios/scenario/ScenarioConfig";
 import { expect } from "Leaf.lspkg/Utils/common/Expect";
 import { DefaultLeafInteractor } from "Leaf.lspkg/Interactors/interactor/DefaultLeafInteractor";
-import { findSceneObjectByName } from "Leaf.lspkg/Utils/common/Utils";
+import { findSceneObjectByName, findSceneObjectsByName } from "Leaf.lspkg/Utils/common/Utils";
 import WorldCameraFinderProvider from "SpectaclesInteractionKit.lspkg/Providers/CameraProvider/WorldCameraFinderProvider";
+import { estimateTextWidthEm } from "../../Core/labels";
 import {
   interactableReady,
   objectEnabled,
@@ -26,6 +27,74 @@ import {
 
 /** Every button on the main panel; none may be reachable while the alert is open. */
 const PANEL_BUTTONS = ["Button 24 h", "Button 7 days", "Button 30 days", "Button Strongest", "Button Spin"];
+
+/** A rectangle in screen fractions, from the engine's own projection (worldSpaceToScreenSpace). */
+interface ScreenBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** Lens Text em height in cm per unit of Text.size (matches LensUi/MapLabels: em = size / 43.886). */
+const EM_CM_PER_SIZE = 1 / 43.886;
+
+/**
+ * The screen box a world-space Text's glyphs cover, built from the same text-width estimate the
+ * label layout uses (Core/labels.estimateTextWidthEm), the Text's own size and pose, and the
+ * engine's projection. All-caps lines (oceans, continents) carry the layout's letter spacing.
+ */
+function textScreenBox(camera: Camera, obj: SceneObject, t: Text): ScreenBox {
+  const emCm = t.size * EM_CM_PER_SIZE;
+  const lines = t.text.split("\n");
+  const spacing = (l: string): number => (l === l.toUpperCase() && /[A-Z]/.test(l) ? 0.12 : 0);
+  const halfWCm = (Math.max(...lines.map((l) => estimateTextWidthEm(l, spacing(l)))) * emCm) / 2;
+  const halfHCm = (lines.length * 1.2 * emCm) / 2;
+  const tr = obj.getTransform();
+  const pos = tr.getWorldPosition();
+  const rot = tr.getWorldRotation();
+  const corners: [number, number][] = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const [sx, sy] of corners) {
+    const s = camera.worldSpaceToScreenSpace(pos.add(rot.multiplyVec3(new vec3(sx * halfWCm, sy * halfHCm, 0))));
+    x0 = Math.min(x0, s.x);
+    x1 = Math.max(x1, s.x);
+    y0 = Math.min(y0, s.y);
+    y1 = Math.max(y1, s.y);
+  }
+  return { x0, y0, x1, y1 };
+}
+
+function boxesIntersect(a: ScreenBox, b: ScreenBox): boolean {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+/**
+ * Texts of the visible map labels whose glyph box intersects the epicentre distance label's box
+ * on screen. "Visible" means enabled with non-empty text and not faded out: MapLabels writes its
+ * eased brightness into textFill.color, so a nearly-black label is invisible on the additive
+ * display. Empty when the epicentre label itself is hidden.
+ */
+function mapLabelsOverlappingEpicentreLabel(camera: Camera): string[] {
+  const labelObj = findSceneObjectByName("Epicentre distance");
+  if (isNull(labelObj) || !labelObj!.enabled) return [];
+  const labelText = labelObj!.getComponent("Component.Text") as Text;
+  if (isNull(labelText)) return [];
+  const target = textScreenBox(camera, labelObj!, labelText);
+  const out: string[] = [];
+  for (const o of findSceneObjectsByName("Map Label")) {
+    if (isNull(o) || !o.isEnabledInHierarchy) continue;
+    const t = o.getComponent("Component.Text") as Text;
+    if (isNull(t) || t.text.length === 0) continue;
+    const c = t.textFill.color;
+    if (Math.max(c.x, c.y, c.z) < 0.05) continue;
+    if (boxesIntersect(textScreenBox(camera, o, t), target)) out.push(t.text.replace(/\n/g, " "));
+  }
+  return out;
+}
 
 @component
 export class AlertScenario extends Scenario {
@@ -77,6 +146,17 @@ export class AlertScenario extends Scenario {
     expect(
       label !== undefined && label.includes("km") && label.includes("from home"),
       `Epicentre label should read like "15 km from home" - got "${label}"`,
+    ).toBe(true);
+
+    // No visible map label may overlap the epicentre label (second-cut check 2026-10-21). The
+    // label layout recomputes a few times a second and a displaced name fades out rather than
+    // vanishing, so poll until the view settles before requiring a clear label.
+    const camera = WorldCameraFinderProvider.getInstance().getComponent();
+    const labelClear = await waitUntil(() => mapLabelsOverlappingEpicentreLabel(camera).length === 0, 5000);
+    const overlapping = mapLabelsOverlappingEpicentreLabel(camera);
+    expect(
+      labelClear && overlapping.length === 0,
+      `No visible map label should overlap the epicentre label (overlapping: ${overlapping.length > 0 ? overlapping.join(", ") : "none"})`,
     ).toBe(true);
 
     const distance = textUnderParent("Distance", "Alert During");

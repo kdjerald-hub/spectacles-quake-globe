@@ -16,6 +16,7 @@ import { buildEpicenterRing, buildHaloMesh, buildMarkerMeshes, highlightHalfSize
 import { buildOctahedron, buildPrism, buildRing } from "../Core/shapes";
 import { boundaryPolylines, buildSubductionBarbs } from "../Core/plates";
 import type { PlateBoundaryClass } from "../Core/plates";
+import { viewFrame } from "../Core/labels";
 import type { LabelView } from "../Core/labels";
 import { LINE_RADIUS_FACTOR } from "../Core/occluder";
 import {
@@ -737,7 +738,11 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.mapLabels.ease(dt);
     this.sinceLabelLayout += dt;
     if (this.sinceLabelLayout < LABEL_RELAYOUT_INTERVAL_S) return;
-    this.mapLabels.relayout(this.labelView(), this.overlay.home, this.selectedId !== "", this.sinceLabelLayout);
+    // During an alert the epicentre distance label floats over the globe; the map names keep
+    // clear of its box (second-cut check 2026-10-21), like the core's selection obstacle.
+    const view = this.labelView();
+    const obstacle = this.overlay.epicenterLabelObstacle(viewFrame(view.eye, view.globeCentre), view.eye);
+    this.mapLabels.relayout(view, this.overlay.home, this.selectedId !== "", this.sinceLabelLayout, obstacle === null ? [] : [obstacle]);
     this.sinceLabelLayout = 0;
   }
 

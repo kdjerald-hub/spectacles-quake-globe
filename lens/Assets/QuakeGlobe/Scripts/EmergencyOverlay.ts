@@ -35,8 +35,10 @@ import { EARTHQUAKE, nextStage, profileForAlert } from "../Core/hazards";
 import type { AlertStage } from "../Core/hazards";
 import { LINE_RADIUS_FACTOR } from "../Core/occluder";
 import { EPICENTER_COLOR, EPICENTER_PULSE, DEPTH_CLASS_COLORS, depthClass, pulse } from "../Core/style";
-import { buildEpicenterRing, highlightHalfSize } from "../Core/markers";
+import { buildEpicenterRing, epicenterRingDeg, highlightHalfSize } from "../Core/markers";
 import type { MarkerOptions, TriangleMesh } from "../Core/markers";
+import { estimateTextWidthEm, toViewAngles } from "../Core/labels";
+import type { Box, ViewFrame } from "../Core/labels";
 import { buildOctahedron, buildPrism, buildRing, buildSphereCircle } from "../Core/shapes";
 import { polylinesToRibbonMeshes } from "../Core/lines";
 import {
@@ -139,6 +141,13 @@ const ARROW_EDGE_DOWN_CM = 15;
 const ARROW_CARD_MARGIN_CM = 4;
 /** The arrow never gets pushed past this (cm at ARROW_AHEAD_CM): the display edge is ~±17. */
 const ARROW_MAX_SIDE_CM = 16;
+/** Epicentre label ("15 km from home") text size; its em height is size / 43.886 cm (LensUi). */
+const EPICENTER_LABEL_SIZE = 44;
+const EPICENTER_LABEL_EM_CM = EPICENTER_LABEL_SIZE / 43.886;
+/** Gap between the epicentre ring's edge and the label's nearest glyph (cm). */
+const EPICENTER_LABEL_GAP_CM = 1.2;
+/** Clear space the map labels keep around the epicentre label (degrees of view angle). */
+const EPICENTER_LABEL_MARGIN_DEG = 0.4;
 /** The cover-spot placement hint follows the line of sight: this far ahead and above centre (cm). */
 const HINT_AHEAD_CM = 70;
 const HINT_RAISE_CM = 9;
@@ -147,15 +156,27 @@ const PROBE_RANGE_CM = 600;
 /** A world-query hit counts as current for this long, so a pinch commits the surface just probed (s). */
 const PROBE_FRESH_S = 0.5;
 
+/**
+ * The off-view arrow as a notched dart: a tip on local +X, two swept-back wings, and a notch cut
+ * into the axis behind them. The old wide triangle read as pointing at whichever corner stood out
+ * in a flat frame (second-cut check 2026-10-21); the dart is clearly longer (2.3 x size along +X)
+ * than wide (1.2 x size), so the pointing end is unmistakable. Two triangles sharing the tip-notch
+ * edge, wound counter-clockwise seen from local +Z (the face the billboard shows the viewer).
+ */
 function buildArrowMesh(size: number): TriangleMesh {
-  const pts: [number, number][] = [[1.5, 0], [-0.8, 0.9], [-0.8, -0.9]];
+  const pts: [number, number][] = [
+    [1.5, 0], // tip
+    [-0.8, 0.6], // left wing, swept back
+    [-0.3, 0], // notch on the axis
+    [-0.8, -0.6], // right wing, swept back
+  ];
   const positions: number[] = [];
   const normals: number[] = [];
   for (const p of pts) {
     positions.push(p[0] * size, p[1] * size, 0);
     normals.push(0, 0, 1);
   }
-  return { positions, normals, indices: [0, 1, 2] };
+  return { positions, normals, indices: [0, 1, 2, 0, 2, 3] };
 }
 
 export class EmergencyOverlay {
@@ -195,8 +216,10 @@ export class EmergencyOverlay {
   private detailsCard!: DetailsCard;
   private alertCard!: AlertCard;
   private hint!: Text;
-  /** "15 km from home" pinned above the epicentre ring on the globe (video review 2026-10-21). */
+  /** "15 km from home" beside the epicentre ring on the globe (video review 2026-10-21). */
   private epicenterLabel!: Text;
+  /** Where updatePoses last put the epicentre label; null while it is hidden or not yet posed. */
+  private epicenterLabelWorld: vec3 | null = null;
 
   private epicenterRingVisual!: RenderMeshVisual;
   private epicenterRingMaterial!: Material;
@@ -283,11 +306,11 @@ export class EmergencyOverlay {
     });
     this.hint.getSceneObject().enabled = false;
 
-    // Distance label pinned above the epicentre ring ("15 km from home"), billboarded to the
+    // Distance label beside the epicentre ring ("15 km from home"), billboarded to the
     // viewer each frame (updatePoses). Light warm, like the card's distance line: the quakes stay
     // the only saturated colour.
     this.epicenterLabel = createText(this.ctx.root, "Epicentre distance", new vec3(0, 0, 0), {
-      size: 44,
+      size: EPICENTER_LABEL_SIZE,
       color: [1.0, 0.85, 0.6],
       widthCm: 26,
       heightCm: 1.6,
@@ -457,11 +480,14 @@ export class EmergencyOverlay {
       ct.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(cardTop)))));
     }
 
-    // Distance label pinned just below the epicentre ring, facing the viewer. Below, not above:
-    // the home marker and its pinned country label sit north of the epicentre (home is Hualien
-    // City, 15 km north), so a label above the ring would cover them. The epicentre faces the
-    // viewer during an alert (rotationOverride), so the label floats over the globe's face, still
-    // well clear of the alert card below the globe.
+    // Distance label in the open space to the viewer's right of the epicentre ring, facing the
+    // viewer. Right, not below or above: home (Hualien City, 15 km north) and the pinned country
+    // name sit at and above the ring, the dense coastline south of Taiwan ran through the old
+    // below-the-ring spot ("Indonesia" overlapped it; second-cut check 2026-10-21), and during an
+    // alert the epicentre faces the viewer (rotationOverride), so to its right lies the open
+    // Philippine Sea. The offset clears the ring by the label's own half-width, so the text starts
+    // just past the ring's edge; map names keep clear of it via epicenterLabelObstacle. The glyphs
+    // do not scale with the globe, so only the ring's share of the offset is scaled.
     if (this.epicenterLabel.getSceneObject().enabled) {
       const q = SIMULATED_QUAKE;
       const surface = this.ctx.content
@@ -469,10 +495,16 @@ export class EmergencyOverlay {
         .getWorldTransform()
         .multiplyPoint(toLensVec(geoToCartesian(q.lat, q.lon, this.ctx.globeRadiusCm * LINE_RADIUS_FACTOR)));
       const outward = surface.sub(globeCenter).normalize();
-      const labelPos = surface.add(outward.uniformScale(2.5 * scale)).add(new vec3(0, -4.2 * scale, 0));
+      const ringCm = this.ctx.globeRadiusCm * Math.sin((epicenterRingDeg(q, this.markerOpt()) * Math.PI) / 180);
+      const halfTextCm = (estimateTextWidthEm(this.epicenterLabel.text) * EPICENTER_LABEL_EM_CM) / 2;
+      const sideCm = ringCm * scale + EPICENTER_LABEL_GAP_CM + halfTextCm;
+      const labelPos = surface.add(outward.uniformScale(2.5 * scale)).add(right.uniformScale(sideCm));
       const lt = this.epicenterLabel.getSceneObject().getTransform();
       lt.setWorldPosition(labelPos);
       lt.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(labelPos)))));
+      this.epicenterLabelWorld = labelPos;
+    } else {
+      this.epicenterLabelWorld = null;
     }
 
     if (this.hint.getSceneObject().enabled) {
@@ -617,6 +649,25 @@ export class EmergencyOverlay {
       maxY = Math.max(maxY, py);
     }
     return { minX, maxX, minY, maxY };
+  }
+
+  /**
+   * The epicentre label's box in the label layout's view-angle frame, so the map names keep clear
+   * of it (second-cut check 2026-10-21) the way the selected quake and its stem are kept clear by
+   * the core's selectionObstacle. The Lens passes it into layoutLabels as an obstacle. Null while
+   * the label is hidden or not yet posed. `frame` and `eye` are the same values the layout uses.
+   */
+  epicenterLabelObstacle(frame: ViewFrame, eye: Vec3): Box | null {
+    if (this.epicenterLabelWorld === null || !this.epicenterLabel.getSceneObject().enabled) return null;
+    const pos = this.epicenterLabelWorld;
+    const centre = toViewAngles(frame, eye, fromLensVec(pos));
+    const dist = Math.max(1, Math.hypot(pos.x - eye.x, pos.y - eye.y, pos.z - eye.z));
+    const halfWCm = (estimateTextWidthEm(this.epicenterLabel.text) * EPICENTER_LABEL_EM_CM) / 2;
+    const halfHCm = (1.2 * EPICENTER_LABEL_EM_CM) / 2;
+    const rad = 180 / Math.PI;
+    const halfWDeg = Math.atan(halfWCm / dist) * rad + EPICENTER_LABEL_MARGIN_DEG;
+    const halfHDeg = Math.atan(halfHCm / dist) * rad + EPICENTER_LABEL_MARGIN_DEG;
+    return { x0: centre.x - halfWDeg, y0: centre.y - halfHDeg, x1: centre.x + halfWDeg, y1: centre.y + halfHDeg };
   }
 
   // ---------------------------------------------------------------- selection (details card)

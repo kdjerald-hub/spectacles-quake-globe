@@ -151,6 +151,17 @@ agents to fix what they found. For the Lens:
 - The card says "Taiwan CWA: ML 7.1" (the official report) and "Depth 40 km (USGS)".
 - The alert picks its wording from the hazard profile that matches the alert's event type.
 
+## Notes from checking the second cut (2026-10-21)
+An AI-assisted check of the second cut, at full size, before it went back to the committee. The
+learner asked the agents to fix what they found. For the Lens:
+- The off-view arrow must read at a glance as pointing at the cover spot. Its near-equilateral
+  triangle reads as pointing at the alert card instead: when the spot is down and to the right,
+  the triangle's right edge stands upright and the whole shape reads as "pointing left". Make it a
+  shape whose tip is unmistakable, like a navigation arrow.
+- The "15 km from home" label must read cleanly. It sits on top of the country names and the dense
+  coastline south of Taiwan ("Indonesia" runs through it). Map names keep clear of it, and it sits
+  in open space near the ring.
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.
