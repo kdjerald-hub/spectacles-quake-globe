@@ -12,5 +12,6 @@ Each pass is one headless Claude Code session with Snap's ls-clad plugin, workin
 | [4](pass4.md) | Readability, and the cover spot on surfaces | 128 | 42 |
 | [5](pass5.md) | The off-view arrow points at the cover spot | 67 | 26 |
 | [6](pass6.md) | Changes from the video review | 133 | 33 |
+| [7](pass7.md) | The arrow's shape and the epicentre label | 84 | 15 |
 
 Turns and minutes are Claude Code's own count. By the logs' clock, pass 3 took about 6 hours: it ran overnight, with long pauses between steps that Claude Code's count leaves out.

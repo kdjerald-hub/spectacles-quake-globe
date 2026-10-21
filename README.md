@@ -74,7 +74,8 @@ Made for the Learn AR with SPECS hackathon:
   - the two-stage alert;
   - readability and a cover spot placed on real surfaces;
   - the off-view arrow;
-  - the changes from the video review.
+  - the changes from the video review;
+  - the arrow's shape and the epicentre label, after a full-size check of the second cut.
 
   Each pass's prompt and report are in [docs/clad-build/](docs/clad-build/).
 - **Tested** with LEAF: one scenario for each done criterion, plus the home marker. They run in the
