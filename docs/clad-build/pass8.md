@@ -29,11 +29,11 @@ lens-studio-router, specs-leaf-run-in-preview, preview-inspection
 
 ## LEAF runs in this pass (in order)
 
-map_detail: succeeded/succeeded/succeeded, quake_details: succeeded/succeeded/succeeded, alert: failed/failed/no run/succeeded/succeeded/succeeded, cover_spot: succeeded/succeeded/succeeded, emergency_contacts: succeeded/succeeded/succeeded, home_marker: succeeded/succeeded/succeeded
+map_detail: succeeded/succeeded/succeeded, quake_details: succeeded/succeeded/succeeded, alert: failed/failed/cancelled/succeeded/succeeded/succeeded, cover_spot: succeeded/succeeded/succeeded, emergency_contacts: succeeded/succeeded/succeeded, home_marker: succeeded/succeeded/succeeded
 
 ## Note
 
-Every LEAF call in this pass timed out at the MCP transport while the scenario was still queued, so the verdicts above are LEAF's own PASSED and FAILED lines from the Lens Studio log, matched to each call (pass8_leaf_verdicts.json). The log lines themselves are in pass8_leaf_log_excerpt.txt. One alert call started no run. The agent's report mentions one failed alert run; the log shows two, the second while it was diagnosing its new ring check, before the fix.
+The first ten LEAF calls in this pass timed out at the MCP transport after 60 s while LEAF went on running them; their verdicts are LEAF's own PASSED and FAILED lines in the Lens Studio log, matched to each call (pass8_leaf_verdicts.json). The last eleven returned their status directly, and the log agrees. One alert call reached Lens Studio two minutes late, and its run was cancelled when the next call reset the scene, so it has no verdict. The log lines themselves are in pass8_leaf_log_excerpt.txt. The agent's report mentions one failed alert run; the log shows two, the second while it was diagnosing its new ring check, before the fix.
 
 ## The agent's final report
 

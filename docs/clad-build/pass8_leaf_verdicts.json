@@ -8,6 +8,8 @@
    "call": "22:18:44",
    "scenario": "map_detail",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:18:51",
    "verdict": "succeeded",
    "at": "22:20:21"
   },
@@ -15,6 +17,8 @@
    "call": "22:20:49",
    "scenario": "quake_details",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:20:56",
    "verdict": "succeeded",
    "at": "22:22:36"
   },
@@ -22,6 +26,8 @@
    "call": "22:22:50",
    "scenario": "alert",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:22:57",
    "verdict": "failed",
    "at": "22:24:44"
   },
@@ -29,6 +35,8 @@
    "call": "22:28:39",
    "scenario": "alert",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:28:46",
    "verdict": "failed",
    "at": "22:30:09"
   },
@@ -36,13 +44,17 @@
    "call": "22:32:07",
    "scenario": "alert",
    "debug": false,
-   "verdict": null,
-   "at": null
+   "mcp": "timed out",
+   "started": "22:34:20",
+   "verdict": "cancelled",
+   "at": "22:36:29"
   },
   {
    "call": "22:36:29",
    "scenario": "alert",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:36:35",
    "verdict": "succeeded",
    "at": "22:38:22"
   },
@@ -50,6 +62,8 @@
    "call": "22:38:33",
    "scenario": "cover_spot",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:38:40",
    "verdict": "succeeded",
    "at": "22:40:35"
   },
@@ -57,6 +71,8 @@
    "call": "22:40:42",
    "scenario": "emergency_contacts",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:40:48",
    "verdict": "succeeded",
    "at": "22:42:22"
   },
@@ -64,6 +80,8 @@
    "call": "22:42:29",
    "scenario": "home_marker",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:42:36",
    "verdict": "succeeded",
    "at": "22:44:10"
   },
@@ -71,6 +89,8 @@
    "call": "22:44:23",
    "scenario": "map_detail",
    "debug": false,
+   "mcp": "timed out",
+   "started": "22:44:30",
    "verdict": "succeeded",
    "at": "22:46:25"
   },
@@ -78,6 +98,8 @@
    "call": "22:46:34",
    "scenario": "quake_details",
    "debug": false,
+   "mcp": "returned succeeded",
+   "started": "22:46:41",
    "verdict": "succeeded",
    "at": "22:47:33"
   },
@@ -85,6 +107,8 @@
    "call": "22:47:39",
    "scenario": "alert",
    "debug": false,
+   "mcp": "returned succeeded",
+   "started": "22:47:41",
    "verdict": "succeeded",
    "at": "22:47:46"
   },
@@ -92,6 +116,8 @@
    "call": "22:47:51",
    "scenario": "cover_spot",
    "debug": false,
+   "mcp": "returned succeeded",
+   "started": "22:47:52",
    "verdict": "succeeded",
    "at": "22:47:58"
   },
@@ -99,6 +125,8 @@
    "call": "22:48:03",
    "scenario": "emergency_contacts",
    "debug": false,
+   "mcp": "returned succeeded",
+   "started": "22:48:05",
    "verdict": "succeeded",
    "at": "22:48:10"
   },
@@ -106,6 +134,8 @@
    "call": "22:48:15",
    "scenario": "home_marker",
    "debug": false,
+   "mcp": "returned succeeded",
+   "started": "22:48:16",
    "verdict": "succeeded",
    "at": "22:48:21"
   },
@@ -113,6 +143,8 @@
    "call": "22:48:31",
    "scenario": "map_detail",
    "debug": true,
+   "mcp": "returned succeeded",
+   "started": "22:48:32",
    "verdict": "succeeded",
    "at": "22:48:36"
   },
@@ -120,6 +152,8 @@
    "call": "22:48:51",
    "scenario": "quake_details",
    "debug": true,
+   "mcp": "returned succeeded",
+   "started": "22:48:53",
    "verdict": "succeeded",
    "at": "22:48:58"
   },
@@ -127,6 +161,8 @@
    "call": "22:49:11",
    "scenario": "alert",
    "debug": true,
+   "mcp": "returned succeeded",
+   "started": "22:49:13",
    "verdict": "succeeded",
    "at": "22:49:18"
   },
@@ -134,6 +170,8 @@
    "call": "22:49:23",
    "scenario": "cover_spot",
    "debug": true,
+   "mcp": "returned succeeded",
+   "started": "22:49:24",
    "verdict": "succeeded",
    "at": "22:49:30"
   },
@@ -141,6 +179,8 @@
    "call": "22:49:34",
    "scenario": "emergency_contacts",
    "debug": true,
+   "mcp": "returned succeeded",
+   "started": "22:49:36",
    "verdict": "succeeded",
    "at": "22:49:41"
   },
@@ -148,6 +188,8 @@
    "call": "22:49:46",
    "scenario": "home_marker",
    "debug": true,
+   "mcp": "returned succeeded",
+   "started": "22:49:47",
    "verdict": "succeeded",
    "at": "22:49:52"
   }
