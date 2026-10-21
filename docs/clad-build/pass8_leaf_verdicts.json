@@ -10,6 +10,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:18:51",
+   "runs": "22:20:17",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:20:21"
   },
@@ -19,6 +21,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:20:56",
+   "runs": "22:22:31",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:22:36"
   },
@@ -28,6 +32,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:22:57",
+   "runs": "22:24:32",
+   "leaf_tool": null,
    "verdict": "failed",
    "at": "22:24:44"
   },
@@ -37,6 +43,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:28:46",
+   "runs": "22:29:58",
+   "leaf_tool": null,
    "verdict": "failed",
    "at": "22:30:09"
   },
@@ -46,6 +54,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:34:20",
+   "runs": "22:38:19",
+   "leaf_tool": null,
    "verdict": "cancelled",
    "at": "22:36:29"
   },
@@ -55,6 +65,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:36:35",
+   "runs": "22:47:44",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:38:22"
   },
@@ -64,6 +76,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:38:40",
+   "runs": "22:40:31",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:40:35"
   },
@@ -73,6 +87,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:40:48",
+   "runs": "22:42:19",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:42:22"
   },
@@ -82,6 +98,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:42:36",
+   "runs": "22:44:04",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:44:10"
   },
@@ -91,6 +109,8 @@
    "debug": false,
    "mcp": "timed out",
    "started": "22:44:30",
+   "runs": "22:46:18",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:46:25"
   },
@@ -100,6 +120,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "22:46:41",
+   "runs": "22:47:29",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:47:33"
   },
@@ -109,6 +131,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "22:47:41",
+   "runs": "22:49:16",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:47:46"
   },
@@ -118,6 +142,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "22:47:52",
+   "runs": "22:47:56",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:47:58"
   },
@@ -127,6 +153,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "22:48:05",
+   "runs": "22:48:08",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:48:10"
   },
@@ -136,6 +164,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "22:48:16",
+   "runs": "22:48:19",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:48:21"
   },
@@ -145,6 +175,8 @@
    "debug": true,
    "mcp": "returned succeeded",
    "started": "22:48:32",
+   "runs": "22:48:35",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:48:36"
   },
@@ -154,6 +186,8 @@
    "debug": true,
    "mcp": "returned succeeded",
    "started": "22:48:53",
+   "runs": "22:48:56",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:48:58"
   },
@@ -163,6 +197,8 @@
    "debug": true,
    "mcp": "returned succeeded",
    "started": "22:49:13",
+   "runs": null,
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:49:18"
   },
@@ -172,6 +208,8 @@
    "debug": true,
    "mcp": "returned succeeded",
    "started": "22:49:24",
+   "runs": "22:49:27",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:49:30"
   },
@@ -181,6 +219,8 @@
    "debug": true,
    "mcp": "returned succeeded",
    "started": "22:49:36",
+   "runs": "22:49:39",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:49:41"
   },
@@ -190,6 +230,8 @@
    "debug": true,
    "mcp": "returned succeeded",
    "started": "22:49:47",
+   "runs": "22:49:51",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "22:49:52"
   }

@@ -52,11 +52,11 @@ none
 
 ## LEAF runs in this pass (in order)
 
-map_detail: succeeded/succeeded, quake_details: succeeded/succeeded/timed out, alert: succeeded/succeeded/succeeded/succeeded, cover_spot: succeeded/succeeded/succeeded/timed out, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded
+map_detail: succeeded/succeeded, quake_details: succeeded/succeeded/timed out, alert: succeeded/succeeded/succeeded/succeeded, cover_spot: succeeded/succeeded/timed out then succeeded/timed out, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded
 
 ## Note
 
-Its last four LEAF calls, at DEBUG level, timed out at the MCP transport while LEAF went on running them; their verdicts above are LEAF's own lines in the Lens Studio log, matched to each call (pass3_leaf_verdicts.json; the lines are in pass3_leaf_log_excerpt.txt). alert and the first cover_spot passed; quake_details and the last cover_spot reached LEAF's own 600 s limit. The session ended on an API disconnect just before it saved the scene, so it has no final report. The orchestrating session saved the project and re-ran all six LEAF scenarios, one by one and at DEBUG level; all passed.
+Its last four LEAF calls, at DEBUG level, timed out at the MCP transport, so their verdicts above are LEAF's own lines in the Lens Studio log, matched to each call (pass3_leaf_verdicts.json; the lines are in pass3_leaf_log_excerpt.txt; times are local). alert passed. The first cover_spot hit LEAF's own 600 s limit while it waited to start (01:55:47), then ran and passed (01:57:35). quake_details hit the limit and never ran; the last cover_spot ran and failed on it (04:56:06). The session ended on an API disconnect just before it saved the scene, so it has no final report. The orchestrating session saved the project and re-ran all six LEAF scenarios, one by one and at DEBUG level; all passed.
 
 ## The agent's final report
 

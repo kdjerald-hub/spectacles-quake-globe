@@ -10,6 +10,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "00:59:53",
+   "runs": "01:00:24",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:00:27"
   },
@@ -19,6 +21,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:00:34",
+   "runs": "01:01:05",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:01:09"
   },
@@ -28,6 +32,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:01:16",
+   "runs": "01:01:48",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:01:50"
   },
@@ -37,6 +43,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:01:54",
+   "runs": "01:01:55",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:01:58"
   },
@@ -46,6 +54,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:02:01",
+   "runs": "01:02:02",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:02:04"
   },
@@ -55,6 +65,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:02:08",
+   "runs": "01:02:09",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:02:12"
   },
@@ -64,6 +76,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:02:21",
+   "runs": "01:02:51",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:02:52"
   },
@@ -73,6 +87,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:03:01",
+   "runs": "01:03:32",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:03:35"
   },
@@ -82,6 +98,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:03:41",
+   "runs": "01:04:14",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:04:17"
   },
@@ -91,6 +109,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:04:20",
+   "runs": "01:04:22",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:04:25"
   },
@@ -100,6 +120,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:04:28",
+   "runs": "01:04:29",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:04:32"
   },
@@ -109,6 +131,8 @@
    "debug": false,
    "mcp": "returned succeeded",
    "started": "01:04:36",
+   "runs": "01:04:37",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:04:40"
   },
@@ -118,6 +142,8 @@
    "debug": true,
    "mcp": "returned succeeded",
    "started": "01:05:33",
+   "runs": "01:06:06",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:06:09"
   },
@@ -127,6 +153,8 @@
    "debug": true,
    "mcp": "timed out",
    "started": "01:09:07",
+   "runs": "01:09:58",
+   "leaf_tool": null,
    "verdict": "succeeded",
    "at": "01:10:02"
   },
@@ -136,6 +164,8 @@
    "debug": true,
    "mcp": "timed out",
    "started": "01:28:04",
+   "runs": "01:55:48",
+   "leaf_tool": "timed out 01:55:47",
    "verdict": "succeeded",
    "at": "01:57:35"
   },
@@ -145,6 +175,8 @@
    "debug": true,
    "mcp": "timed out",
    "started": "02:41:33",
+   "runs": null,
+   "leaf_tool": "timed out 02:56:34",
    "verdict": "timed out",
    "at": "02:56:34"
   },
@@ -154,6 +186,8 @@
    "debug": true,
    "mcp": "timed out",
    "started": "04:37:37",
+   "runs": "04:38:31",
+   "leaf_tool": "timed out 04:56:04",
    "verdict": "timed out",
    "at": "04:56:06"
   }
