@@ -1,7 +1,7 @@
-LEAF's own lines from the Lens Studio log during CLAD pass 8 (2026-10-21, local time), from the
-log file LensStudioLog-2026-10-20-09-05-28-407-83937.txt: when each run started, its verdict, and
-the one cancelled run. Only LEAF's lines are kept, with the engine's prefix removed; nothing else
-is changed.
+LEAF's own lines from the Lens Studio log during CLAD pass 8 (2026-10-21, local time, 22:04:50-22:52:12), from the log
+file LensStudioLog-2026-10-20-09-05-28-407-83937.txt: when each run started, its verdict, LEAF's own timeouts and
+cancellations. Only LEAF's lines are kept, with the engine's prefix removed; nothing else is
+changed.
 
 22:18:51.460 [LeafPlugin][PluginViewModel] Running scenario: map_detail
 22:20:17.981 [DefaultLeafScenarioManager] [  0.001s]RUNS: map_detail with args: []

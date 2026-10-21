@@ -1,0 +1,161 @@
+{
+ "window": [
+  "00:30:14",
+  "06:22:50"
+ ],
+ "calls": [
+  {
+   "call": "00:59:48",
+   "scenario": "map_detail",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "00:59:53",
+   "verdict": "succeeded",
+   "at": "01:00:27"
+  },
+  {
+   "call": "01:00:29",
+   "scenario": "quake_details",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:00:34",
+   "verdict": "succeeded",
+   "at": "01:01:09"
+  },
+  {
+   "call": "01:01:11",
+   "scenario": "alert",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:01:16",
+   "verdict": "succeeded",
+   "at": "01:01:50"
+  },
+  {
+   "call": "01:01:52",
+   "scenario": "cover_spot",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:01:54",
+   "verdict": "succeeded",
+   "at": "01:01:58"
+  },
+  {
+   "call": "01:02:00",
+   "scenario": "emergency_contacts",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:02:01",
+   "verdict": "succeeded",
+   "at": "01:02:04"
+  },
+  {
+   "call": "01:02:06",
+   "scenario": "home_marker",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:02:08",
+   "verdict": "succeeded",
+   "at": "01:02:12"
+  },
+  {
+   "call": "01:02:17",
+   "scenario": "map_detail",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:02:21",
+   "verdict": "succeeded",
+   "at": "01:02:52"
+  },
+  {
+   "call": "01:02:56",
+   "scenario": "quake_details",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:03:01",
+   "verdict": "succeeded",
+   "at": "01:03:35"
+  },
+  {
+   "call": "01:03:37",
+   "scenario": "alert",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:03:41",
+   "verdict": "succeeded",
+   "at": "01:04:17"
+  },
+  {
+   "call": "01:04:19",
+   "scenario": "cover_spot",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:04:20",
+   "verdict": "succeeded",
+   "at": "01:04:25"
+  },
+  {
+   "call": "01:04:27",
+   "scenario": "emergency_contacts",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:04:28",
+   "verdict": "succeeded",
+   "at": "01:04:32"
+  },
+  {
+   "call": "01:04:35",
+   "scenario": "home_marker",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "01:04:36",
+   "verdict": "succeeded",
+   "at": "01:04:40"
+  },
+  {
+   "call": "01:05:29",
+   "scenario": "alert",
+   "debug": true,
+   "mcp": "returned succeeded",
+   "started": "01:05:33",
+   "verdict": "succeeded",
+   "at": "01:06:09"
+  },
+  {
+   "call": "01:09:02",
+   "scenario": "alert",
+   "debug": true,
+   "mcp": "timed out",
+   "started": "01:09:07",
+   "verdict": "succeeded",
+   "at": "01:10:02"
+  },
+  {
+   "call": "01:27:58",
+   "scenario": "cover_spot",
+   "debug": true,
+   "mcp": "timed out",
+   "started": "01:28:04",
+   "verdict": "succeeded",
+   "at": "01:57:35"
+  },
+  {
+   "call": "02:41:04",
+   "scenario": "quake_details",
+   "debug": true,
+   "mcp": "timed out",
+   "started": "02:41:33",
+   "verdict": "timed out",
+   "at": "02:56:34"
+  },
+  {
+   "call": "04:36:49",
+   "scenario": "cover_spot",
+   "debug": true,
+   "mcp": "timed out",
+   "started": "04:37:37",
+   "verdict": "timed out",
+   "at": "04:56:06"
+  }
+ ]
+}
