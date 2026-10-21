@@ -4,8 +4,10 @@
 // the glanceable distance line reads like a real distance ("from home" ... "km"). The video-review
 // changes (2026-10-21) are asserted too: the main panel and all its buttons hide while the alert is
 // open (both stages) and come back after "I'm safe", and the alert card takes the panel's place -
-// centred below the globe at about 1 m from the viewer. Then advance ("Shaking stopped") and close
-// ("I'm safe") so the card hides and later scenarios start clean.
+// centred below the globe at about 1 m from the viewer. No visible map label may overlap the
+// epicentre distance label (second-cut check) or the epicentre ring (committee's second review,
+// both 2026-10-21). Then advance ("Shaking stopped") and close ("I'm safe") so the card hides and
+// later scenarios start clean.
 
 import { Scenario } from "Leaf.lspkg/Scenarios/scenario/Scenario";
 import { ScenarioConfig } from "Leaf.lspkg/Scenarios/scenario/ScenarioConfig";
@@ -13,7 +15,11 @@ import { expect } from "Leaf.lspkg/Utils/common/Expect";
 import { DefaultLeafInteractor } from "Leaf.lspkg/Interactors/interactor/DefaultLeafInteractor";
 import { findSceneObjectByName, findSceneObjectsByName } from "Leaf.lspkg/Utils/common/Utils";
 import WorldCameraFinderProvider from "SpectaclesInteractionKit.lspkg/Providers/CameraProvider/WorldCameraFinderProvider";
+import { GEOMETRY, SETTINGS } from "../../Core/config";
 import { estimateTextWidthEm } from "../../Core/labels";
+import { buildEpicenterRing } from "../../Core/markers";
+import type { TriangleMesh } from "../../Core/markers";
+import { SIMULATED_QUAKE } from "../Emergency";
 import {
   interactableReady,
   objectEnabled,
@@ -70,6 +76,69 @@ function textScreenBox(camera: Camera, obj: SceneObject, t: Text): ScreenBox {
 
 function boxesIntersect(a: ScreenBox, b: ScreenBox): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+/** The alert ring's own mesh (built once: it depends only on constants and the collider radius). */
+let ringMeshCache: TriangleMesh | null = null;
+
+/**
+ * The screen box of the alert's epicentre ring: the same small-circle mesh the overlay draws
+ * (Core/markers.buildEpicenterRing), taken through the live "Globe Content" transform and the
+ * engine's projection. The visual's runtime AABB is NOT usable here: Lens Studio clamps a built
+ * mesh's aabbMin/aabbMax to include the origin (measured on this ring: min (0.00, 0.00, -6.83),
+ * max (10.11, 5.98, 0.00) for a true x span of ~8.3..10.1), which inflates the box across a
+ * quarter of the view. The globe radius is read from the handle's own collider sphere, so an
+ * authored radius change cannot silently skew this. Null while the ring visual is hidden.
+ */
+function ringScreenBox(camera: Camera): ScreenBox | null {
+  const ringObj = findSceneObjectByName("Alert epicentre ring");
+  if (isNull(ringObj) || !ringObj!.isEnabledInHierarchy) return null;
+  const visual = ringObj!.getComponent("Component.RenderMeshVisual") as RenderMeshVisual;
+  if (isNull(visual) || !visual.enabled || isNull(visual.mesh)) return null;
+  const globe = findSceneObjectByName("Globe");
+  const content = findSceneObjectByName("Globe Content");
+  if (isNull(globe) || isNull(content)) return null;
+  if (ringMeshCache === null) {
+    const collider = globe!.getComponent("Physics.ColliderComponent") as ColliderComponent;
+    const R = isNull(collider) ? 12 : (collider.shape as SphereShape).radius;
+    const opt = { globeRadius: R, depthExaggeration: SETTINGS.depthExaggeration, baseSize: R * GEOMETRY.markerBaseFraction };
+    ringMeshCache = buildEpicenterRing(SIMULATED_QUAKE, opt);
+  }
+  const w = content!.getTransform().getWorldTransform();
+  const p = ringMeshCache.positions;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < p.length; i += 3) {
+    const s = camera.worldSpaceToScreenSpace(w.multiplyPoint(new vec3(p[i], p[i + 1], p[i + 2])));
+    x0 = Math.min(x0, s.x);
+    x1 = Math.max(x1, s.x);
+    y0 = Math.min(y0, s.y);
+    y1 = Math.max(y1, s.y);
+  }
+  return { x0, y0, x1, y1 };
+}
+
+/**
+ * Texts of the visible map labels whose glyph box intersects the epicentre ring's on-screen box
+ * (committee's second review 2026-10-21: the pinned "Taiwan" sat under the ring and read as
+ * "Ta...an"). Visibility rules match mapLabelsOverlappingEpicentreLabel. Empty when the ring
+ * visual is hidden.
+ */
+function mapLabelsOverlappingEpicentreRing(camera: Camera): string[] {
+  const target = ringScreenBox(camera);
+  if (target === null) return [];
+  const out: string[] = [];
+  for (const o of findSceneObjectsByName("Map Label")) {
+    if (isNull(o) || !o.isEnabledInHierarchy) continue;
+    const t = o.getComponent("Component.Text") as Text;
+    if (isNull(t) || t.text.length === 0) continue;
+    const c = t.textFill.color;
+    if (Math.max(c.x, c.y, c.z) < 0.05) continue;
+    if (boxesIntersect(textScreenBox(camera, o, t), target)) out.push(t.text.replace(/\n/g, " "));
+  }
+  return out;
 }
 
 /**
@@ -157,6 +226,19 @@ export class AlertScenario extends Scenario {
     expect(
       labelClear && overlapping.length === 0,
       `No visible map label should overlap the epicentre label (overlapping: ${overlapping.length > 0 ? overlapping.join(", ") : "none"})`,
+    ).toBe(true);
+
+    // No visible map label may sit under the epicentre ring either (committee's second review
+    // 2026-10-21: the pinned home-country name read as "Ta...an" through the ring). Same polling:
+    // the layout recomputes a few times a second and a displaced name fades out rather than popping.
+    // The diagnostic print mirrors the cover_spot scenario's: the measured geometry on record.
+    const ringBox = ringScreenBox(camera);
+    print(`alert ring screen box ${JSON.stringify(ringBox)}`);
+    const ringClear = await waitUntil(() => mapLabelsOverlappingEpicentreRing(camera).length === 0, 5000);
+    const overRing = mapLabelsOverlappingEpicentreRing(camera);
+    expect(
+      ringClear && overRing.length === 0,
+      `No visible map label should overlap the epicentre ring (overlapping: ${overRing.length > 0 ? overRing.join(", ") : "none"})`,
     ).toBe(true);
 
     const distance = textUnderParent("Distance", "Alert During");

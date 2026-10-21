@@ -162,6 +162,19 @@ learner asked the agents to fix what they found. For the Lens:
   coastline south of Taiwan ("Indonesia" runs through it). Map names keep clear of it, and it sits
   in open space near the ring.
 
+## Notes from the committee's second review (2026-10-21)
+The four-member AI committee judged the second cut; the learner asked the agents to fix what they
+found. For the Lens:
+- During the alert, the epicentre ring covers the "Taiwan" name, which reads as "Ta...an". No map
+  name sits under the ring or the home marker while the alert is open; the home country's name can
+  move to open space nearby or step aside until the alert closes.
+- Done criterion 2 says "pinching a quake shows a card". Its test should pinch a quake on the globe,
+  the way a person would, and check every field the criterion names: coordinates, magnitude, depth,
+  time, place and the nearest plate boundary.
+- The cover-spot hint ("Point at a table or the floor and pinch...") is too small to read in a
+  recording. Make it clearly readable.
+- On the alert card, the grey "Guidance: ..." line is hard to read at full view. Make it brighter.
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.

@@ -17,7 +17,7 @@ import { buildOctahedron, buildPrism, buildRing } from "../Core/shapes";
 import { boundaryPolylines, buildSubductionBarbs } from "../Core/plates";
 import type { PlateBoundaryClass } from "../Core/plates";
 import { viewFrame } from "../Core/labels";
-import type { LabelView } from "../Core/labels";
+import type { Box, LabelView } from "../Core/labels";
 import { LINE_RADIUS_FACTOR } from "../Core/occluder";
 import {
   ATMOSPHERE_RINGS,
@@ -738,11 +738,20 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     this.mapLabels.ease(dt);
     this.sinceLabelLayout += dt;
     if (this.sinceLabelLayout < LABEL_RELAYOUT_INTERVAL_S) return;
-    // During an alert the epicentre distance label floats over the globe; the map names keep
-    // clear of its box (second-cut check 2026-10-21), like the core's selection obstacle.
+    // During an alert the epicentre distance label floats over the globe and the epicentre ring
+    // and home marker sit on it; the map names keep clear of all three boxes (second-cut check and
+    // committee's second review, 2026-10-21), like the core's selection obstacle.
     const view = this.labelView();
-    const obstacle = this.overlay.epicenterLabelObstacle(viewFrame(view.eye, view.globeCentre), view.eye);
-    this.mapLabels.relayout(view, this.overlay.home, this.selectedId !== "", this.sinceLabelLayout, obstacle === null ? [] : [obstacle]);
+    const frame = viewFrame(view.eye, view.globeCentre);
+    const obstacles: Box[] = [];
+    for (const o of [
+      this.overlay.epicenterLabelObstacle(frame, view.eye),
+      this.overlay.epicenterRingObstacle(frame, view.eye),
+      this.overlay.homeMarkerObstacle(frame, view.eye),
+    ]) {
+      if (o !== null) obstacles.push(o);
+    }
+    this.mapLabels.relayout(view, this.overlay.home, this.selectedId !== "", this.sinceLabelLayout, obstacles);
     this.sinceLabelLayout = 0;
   }
 

@@ -37,7 +37,7 @@ import { LINE_RADIUS_FACTOR } from "../Core/occluder";
 import { EPICENTER_COLOR, EPICENTER_PULSE, DEPTH_CLASS_COLORS, depthClass, pulse } from "../Core/style";
 import { buildEpicenterRing, epicenterRingDeg, highlightHalfSize } from "../Core/markers";
 import type { MarkerOptions, TriangleMesh } from "../Core/markers";
-import { estimateTextWidthEm, toViewAngles } from "../Core/labels";
+import { estimateTextWidthEm, selectionObstacle, toViewAngles } from "../Core/labels";
 import type { Box, ViewFrame } from "../Core/labels";
 import { buildOctahedron, buildPrism, buildRing, buildSphereCircle } from "../Core/shapes";
 import { polylinesToRibbonMeshes } from "../Core/lines";
@@ -114,6 +114,8 @@ const CARD_BACK_CM = 48;
 const CARD_CLEARANCE_ANGLE = (2.2 * Math.PI) / 180;
 /** Marker / line colours stay light (cyan, mint): the quakes remain the only saturated colour. */
 const HOME_COLOR: [number, number, number] = [0.5, 0.9, 1.0];
+/** Arc radius of the home ring on the globe, degrees (showHomeMarker and homeMarkerObstacle). */
+const HOME_RING_DEG = 2.2;
 const LINE_COLOR: [number, number, number] = [0.6, 0.9, 1.0];
 const COVER_COLOR: [number, number, number] = [0.55, 1.0, 0.8];
 /** Number of strongest quakes given a pinch target on the globe. */
@@ -151,6 +153,15 @@ const EPICENTER_LABEL_MARGIN_DEG = 0.4;
 /** The cover-spot placement hint follows the line of sight: this far ahead and above centre (cm). */
 const HINT_AHEAD_CM = 70;
 const HINT_RAISE_CM = 9;
+/** Default hint text size (matches the panel's body lines). */
+const HINT_SIZE = 36;
+/**
+ * The cover-spot hint is ~1.5 x the default so it reads in a 1080p screen recording (committee's
+ * second review 2026-10-21). At this size the hint wraps to two lines inside the hint's width,
+ * which still fits the display when the user looks down at the floor (the hint follows the line
+ * of sight at HINT_AHEAD_CM).
+ */
+const COVER_HINT_SIZE = 54;
 /** How far the world-query ray reaches when probing for the real surface under the user's pinch (cm). */
 const PROBE_RANGE_CM = 600;
 /** A world-query hit counts as current for this long, so a pinch commits the surface just probed (s). */
@@ -296,11 +307,12 @@ export class EmergencyOverlay {
     );
     this.controlsCard.setVisible(false); // shown once the globe is placed (onPlaced)
 
+    // The box is tall enough for two lines at COVER_HINT_SIZE: the cover-spot hint wraps.
     this.hint = createText(this.ctx.root, "Overlay hint", new vec3(0, 0, 0), {
-      size: 36,
+      size: HINT_SIZE,
       color: [0.85, 0.92, 1.0],
       widthCm: 34,
-      heightCm: 2.2,
+      heightCm: 3.4,
       centered: true,
       font: this.ctx.font,
     });
@@ -670,6 +682,42 @@ export class EmergencyOverlay {
     return { x0: centre.x - halfWDeg, y0: centre.y - halfHDeg, x1: centre.x + halfWDeg, y1: centre.y + halfHDeg };
   }
 
+  /**
+   * The epicentre ring (with its red marker and stem) as a label obstacle while the alert is open,
+   * so no map name sits under the ring (committee's second review 2026-10-21: the pinned "Taiwan"
+   * sat under it and read as "Ta...an"). Built with the core's selectionObstacle, exactly like the
+   * selected-quake obstacle; the home country's name steps aside until the alert closes (pinned
+   * labels keep their anchor, so "nearby open space" only happens when the anchor already clears
+   * the ring). Null while no alert is active.
+   */
+  epicenterRingObstacle(frame: ViewFrame, eye: Vec3): Box | null {
+    if (!this.alertActive || !this.epicenterRingVisual.enabled) return null;
+    const q = SIMULATED_QUAKE;
+    const R = this.ctx.globeRadiusCm;
+    const world = this.ctx.content.getTransform().getWorldTransform();
+    const scale = this.ctx.handle.getTransform().getWorldScale().y;
+    const surface = world.multiplyPoint(toLensVec(geoToCartesian(q.lat, q.lon, R * LINE_RADIUS_FACTOR)));
+    const marker = world.multiplyPoint(toLensVec(quakePosition(q.lat, q.lon, q.depthKm, R, SETTINGS.depthExaggeration)));
+    const ringWorld = R * Math.sin((epicenterRingDeg(q, this.markerOpt()) * Math.PI) / 180) * scale;
+    return selectionObstacle(frame, eye, fromLensVec(surface), fromLensVec(marker), ringWorld);
+  }
+
+  /**
+   * The home marker (its octahedron and ring) as a label obstacle while the alert is open, built
+   * the same way (committee's second review 2026-10-21). Null outside an alert: the marker alone
+   * does not displace the pinned home-country name.
+   */
+  homeMarkerObstacle(frame: ViewFrame, eye: Vec3): Box | null {
+    if (!this.alertActive || !this.homeMarkerVisual.enabled) return null;
+    const home = this.home;
+    const R = this.ctx.globeRadiusCm;
+    const world = this.ctx.content.getTransform().getWorldTransform();
+    const scale = this.ctx.handle.getTransform().getWorldScale().y;
+    const p = fromLensVec(world.multiplyPoint(toLensVec(geoToCartesian(home.lat, home.lon, R * LINE_RADIUS_FACTOR))));
+    const radius = Math.max(R * Math.sin((HOME_RING_DEG * Math.PI) / 180), this.markerOpt().baseSize * 1.8) * scale;
+    return selectionObstacle(frame, eye, p, p, radius);
+  }
+
   // ---------------------------------------------------------------- selection (details card)
 
   onSelection(q: Quake | null, nowMs: number): void {
@@ -835,7 +883,7 @@ export class EmergencyOverlay {
     this.coverSpotNormal = null;
     this.placeCoverSpot();
     this.placementPlane.enabled = true;
-    this.showHint("Point at a table or the floor and pinch to place your cover spot", 0);
+    this.showHint("Point at a table or the floor and pinch to place your cover spot", 0, COVER_HINT_SIZE);
   }
 
   /**
@@ -887,8 +935,9 @@ export class EmergencyOverlay {
     }
   }
 
-  private showHint(text: string, seconds: number): void {
+  private showHint(text: string, seconds: number, size = HINT_SIZE): void {
     this.hint.text = text;
+    this.hint.size = size;
     this.hint.getSceneObject().enabled = true;
     this.hintUntil = seconds > 0 ? this.elapsed + seconds : Number.MAX_VALUE;
   }
@@ -903,7 +952,7 @@ export class EmergencyOverlay {
       this.homeMarkerVisual.getSceneObject().getTransform().setLocalPosition(toLensVec(p));
       this.homeMarkerVisual.enabled = true;
     }
-    const ring = triangleRenderMesh(buildSphereCircle(where.lat, where.lon, 2.2, R * LINE_RADIUS_FACTOR * 1.001, R * 0.01));
+    const ring = triangleRenderMesh(buildSphereCircle(where.lat, where.lon, HOME_RING_DEG, R * LINE_RADIUS_FACTOR * 1.001, R * 0.01));
     if (ring !== null) {
       this.homeRingVisual.mesh = ring;
       this.homeRingVisual.enabled = true;

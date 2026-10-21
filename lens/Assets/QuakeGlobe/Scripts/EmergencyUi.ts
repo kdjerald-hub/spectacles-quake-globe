@@ -31,6 +31,12 @@ const TITLE: [number, number, number] = [0.78, 0.9, 1.0];
 /** Alert accents are warm so the card reads as urgent without a saturated fill or an emergency-red banner. */
 const WARN: [number, number, number] = [1.0, 0.76, 0.4];
 const GUIDE: [number, number, number] = [1.0, 0.95, 0.85];
+/**
+ * The "Guidance: ..." source line on both alert stages. MUTED grey was hard to read at full view
+ * (committee's second review 2026-10-21); on the additive display brightness is visibility, so
+ * this is light, not grey, while staying visibly dimmer than BODY so it reads as secondary.
+ */
+const SOURCE: [number, number, number] = [0.82, 0.88, 0.96];
 
 /** Height of `lines` lines of world-space text at `size` (matches LensUi/QuakeGlobeLens). */
 function textHeightCm(size: number, lines: number): number {
@@ -250,7 +256,7 @@ class AlertDuringPage extends CardBase {
     this.gap(0.25);
     this.distanceText = this.line("Distance", 58, WARN, 1);
     this.line("Sim note", 46, WARN, 1).text = opts.simNote;
-    this.line("Source", 38, MUTED, 2).text = opts.source;
+    this.line("Source", 38, SOURCE, 2).text = opts.source;
     this.gap(0.6);
     const h = 5;
     const row = this.y - h / 2;
@@ -295,7 +301,7 @@ class AlertAfterPage extends CardBase {
     this.detailsText = this.line("Details", 42, BODY, 6);
     this.gap(0.2);
     this.line("After", 44, GUIDE, Math.max(1, opts.after.length) + 1).text = opts.after.join("\n");
-    this.line("Source", 38, MUTED, 2).text = opts.source;
+    this.line("Source", 38, SOURCE, 2).text = opts.source;
     this.statusText = this.line("Status", 44, WARN, 1);
     this.gap(0.5);
     const h = 4.6;
