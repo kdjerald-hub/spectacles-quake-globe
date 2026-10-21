@@ -14,6 +14,9 @@ import { AlertScenario } from "./AlertScenario";
 import { SafeSpotArrowScenario } from "./SafeSpotArrowScenario";
 import { EmergencyContactsScenario } from "./EmergencyContactsScenario";
 import { HomeMarkerScenario } from "./HomeMarkerScenario";
+// Demo-video drivers (not done-criterion tests): see DemoAlertScenario.ts.
+import { DemoAlertScenario } from "./DemoAlertScenario";
+import { DemoGlobeScenario } from "./DemoGlobeScenario";
 
 @component
 export class LeafIndex extends BaseScriptComponent {
@@ -25,5 +28,7 @@ export class LeafIndex extends BaseScriptComponent {
     { id: "cover_spot", typename: SafeSpotArrowScenario.getTypeName() },
     { id: "emergency_contacts", typename: EmergencyContactsScenario.getTypeName() },
     { id: "home_marker", typename: HomeMarkerScenario.getTypeName() },
+    { id: "demo_alert", typename: DemoAlertScenario.getTypeName() },
+    { id: "demo_globe", typename: DemoGlobeScenario.getTypeName() },
   ];
 }
