@@ -14,7 +14,14 @@ Each pass is one headless Claude Code session with Snap's ls-clad plugin, workin
 | [6](pass6.md) | Changes from the video review | 133 | 33 | none |
 | [7](pass7.md) | The arrow's shape and the epicentre label | 84 | 15 | none |
 | [8](pass8.md) | The committee's second review: the Taiwan name, a real pinch test, the hint, the guidance line | 154 | 48 | lens-studio-router, specs-leaf-run-in-preview, preview-inspection |
+| [9](pass9.md) | The map of your area: during the alert the globe zooms into a map around home | 144 | 55 | lens-studio-router |
+| [9b, first try](pass9b_stopped_blank_project.md) | Stopped: Lens Studio had reopened on a blank project | 29 | 4 | specs-leaf-run-in-preview, preview-inspection, lens-log-analysis |
+| [9b](pass9b.md) | Finish pass 9 after a Lens Studio restart | 67 | 8 | lens-studio-router, specs-leaf-run-in-preview, lens-log-analysis, preview-inspection, editor-api |
+| [10](pass10.md) | Land tint and a warm dashed home-to-epicentre line on the map | 74 | 11 | none |
+| [11](pass11.md) | The two demo-video drivers, written fresh from a shot list | 47 | 7 | specs-leaf-write-scenarios, specs-leaf-run-in-preview |
 
-In all: 1067 turns, 5 h 34 min. The total is summed from each pass's exact duration and then rounded to the minute, like each pass; it is not a sum of the rounded minutes above.
+In all: 1399 turns, 6 h 55 min. The total is summed from each pass's exact duration and then rounded to the minute, like each pass; it is not a sum of the rounded minutes above.
+
+Not in that total: the stopped first try at pass 9b, 29 turns and 4 minutes (see its note).
 
 Turns and minutes are Claude Code's own count. By the logs' clock, pass 3 took about 6 hours: it ran overnight, with long pauses between steps that Claude Code's count leaves out.

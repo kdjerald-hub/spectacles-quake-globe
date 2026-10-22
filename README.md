@@ -2,9 +2,9 @@
 
 When the earthquake alert hits your phone, this Lens for Snap Spectacles (SPECS) shows what the phone
 can't. Drop, Cover, Hold On comes first. Your cover spot is marked in your room. Once the quake's
-location is known, a live globe in front of you shows where it struck and how far that is from
-home. After the shaking it shows what happened and which plates met, and one pinch tells your
-emergency contacts.
+location is known, the live globe in front of you zooms into a map of your area: where it struck,
+and how far that is from home. After the shaking it shows what happened and which plates met, and
+one pinch tells your emergency contacts.
 
 Made for the Learn AR with SPECS hackathon:
 - planned with Snap's plan-lens skill pack;
@@ -18,9 +18,9 @@ Made for the Learn AR with SPECS hackathon:
 
 **In the Lens Studio preview (SPECS 27):**
 
-| The alert: Drop, Cover, Hold On first | Your cover spot, on the floor | After the shaking: the details | Around it: the live globe |
+| The alert: Drop, Cover, Hold On first, under a map of your area | Your cover spot, on the floor | After the shaking: the details | Around it: the live globe |
 |---|---|---|---|
-| ![The alert card while shaking](docs/images/alert_during.png) | ![The cover spot on the preview room's floor](docs/images/cover_spot.png) | ![The details after the shaking](docs/images/alert_after.png) | ![The live globe with the strongest quake of the week](docs/images/globe_strongest.png) |
+| ![The alert card while shaking, under the map of your area: home, and the epicentre 15 km south](docs/images/alert_during.png) | ![The cover spot on the preview room's floor](docs/images/cover_spot.png) | ![The details after the shaking](docs/images/alert_after.png) | ![The live globe with the strongest quake of the week](docs/images/globe_strongest.png) |
 
 ## What it does
 
@@ -34,8 +34,9 @@ Made for the Learn AR with SPECS hackathon:
    - The dashboard steps aside. The only button left is **Shaking stopped**.
 3. The globe turns to the epicentre and zooms into a map of your area. On a 24 cm globe, 15 km is
    less than 0.3 mm, so the map takes its place: home at the centre, distance rings, and the
-   epicentre at its true direction and distance ("15 km S"), with the coastline, nearby place names
-   and plate boundaries. Every distance from home on it is true. Quakes elsewhere fade out.
+   epicentre at its true direction and distance ("15 km S"), joined to home by a warm dashed line,
+   with the land faintly tinted, the coastline, nearby place names and plate boundaries. Every
+   distance from home on it is true. Quakes elsewhere fade out.
 4. If your cover spot is out of view, a small arrow at the edge of your view and a chime point to it.
 5. After you pinch **Shaking stopped**, the card shows:
    - USGS M7.4 (Taiwan CWA: ML 7.1)
@@ -83,7 +84,13 @@ Made for the Learn AR with SPECS hackathon:
   - the changes from the video review;
   - the arrow's shape and the epicentre label, after a full-size check of the second cut;
   - the committee's second review: map names step aside from the epicentre ring, the quake-details
-    test pinches a quake on the globe, and the cover-spot hint and the guidance line read better.
+    test pinches a quake on the globe, and the cover-spot hint and the guidance line read better;
+  - the map of your area, asked for by the learner after watching the video: during the alert the
+    globe zooms into a map around home (finished after a Lens Studio restart);
+  - the map's land tint and a warm dashed line from home to the epicentre, after an AI-assisted
+    check of the first recording with the map;
+  - the two demo-video drivers, the LEAF scenarios `demo_alert` and `demo_globe`, written fresh
+    from a shot list.
 
   Each pass's prompt and report are in [docs/clad-build/](docs/clad-build/).
 - **Tested** with LEAF: one scenario for each done criterion, plus the home marker. They run in the
@@ -91,10 +98,12 @@ Made for the Learn AR with SPECS hackathon:
   presses.
 - **Not built through CLAD:**
   - the first prototype, the live globe of 2026-10-19;
-  - the shared `core/`, `data/` and `tools/`;
-  - the two demo-video drivers, the LEAF scenarios `demo_alert` and `demo_globe`.
+  - the shared `core/`, `data/` and `tools/`.
 
-  All of these were written with Claude Code.
+  These were written with Claude Code.
+- **Video:** recorded in the Lens Studio preview while the two CLAD-written LEAF drivers pressed
+  the Lens's real buttons and the Lens Studio MCP moved the camera. The narration is a synthetic
+  voice (Kokoro-82M, Apache-2.0, run locally), in the third person; every caption is what it says.
 
 ## How it is built
 

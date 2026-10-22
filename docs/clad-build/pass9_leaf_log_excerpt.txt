@@ -1,0 +1,46 @@
+LEAF's own lines from the Lens Studio log during pass 9 (2026-10-22, local time, 09:18:09-10:12:34), from the log
+file LensStudioLog-2026-10-20-09-05-28-407-83937.txt: when each run started, its verdict, LEAF's own timeouts and
+cancellations. Only LEAF's lines are kept, with the engine's prefix removed; nothing else is
+changed.
+
+09:48:09.538 [LeafPlugin][PluginViewModel] Running scenario: map_detail
+09:56:30.115 [DefaultLeafScenarioManager] [  0.000s]RUNS: map_detail with args: []
+09:56:43.958 [DefaultLeafScenarioManager] [ 13.901s]PASSED: map_detail
+09:56:43.960 [DefaultLeafScenarioManager] [ 13.903s][map_detail] PASSED
+09:56:44.220 [LeafPlugin][PluginViewModel] ✅ Scenario map_detail completed successfully.
+09:56:59.670 [LeafPlugin][PluginViewModel] Running scenario: quake_details
+09:59:13.757 [DefaultLeafScenarioManager] [  0.000s]RUNS: quake_details with args: []
+09:59:21.447 [DefaultLeafScenarioManager] [  7.720s]PASSED: quake_details
+09:59:21.448 [DefaultLeafScenarioManager] [  7.720s][quake_details] PASSED
+09:59:21.719 [LeafPlugin][PluginViewModel] ✅ Scenario quake_details completed successfully.
+09:59:34.415 [LeafPlugin][PluginViewModel] Running scenario: alert
+10:01:03.135 [DefaultLeafScenarioManager] [  0.000s]RUNS: alert with args: []
+10:01:07.311 [DefaultLeafScenarioManager] [  4.208s]PASSED: alert
+10:01:07.311 [DefaultLeafScenarioManager] [  4.208s][alert] PASSED
+10:01:07.390 [LeafPlugin][PluginViewModel] ✅ Scenario alert completed successfully.
+10:01:20.270 [LeafPlugin][PluginViewModel] Running scenario: cover_spot
+10:02:45.098 [DefaultLeafScenarioManager] [  0.001s]RUNS: cover_spot with args: []
+10:02:51.631 [DefaultLeafScenarioManager] [  6.568s]PASSED: cover_spot
+10:02:51.631 [DefaultLeafScenarioManager] [  6.568s][cover_spot] PASSED
+10:02:51.703 [LeafPlugin][PluginViewModel] ✅ Scenario cover_spot completed successfully.
+10:03:04.640 [LeafPlugin][PluginViewModel] Running scenario: emergency_contacts
+10:04:55.923 [DefaultLeafScenarioManager] [  0.001s]RUNS: emergency_contacts with args: []
+10:05:04.014 [DefaultLeafScenarioManager] [  8.094s]PASSED: emergency_contacts
+10:05:04.014 [DefaultLeafScenarioManager] [  8.094s][emergency_contacts] PASSED
+10:05:04.069 [LeafPlugin][PluginViewModel] ✅ Scenario emergency_contacts completed successfully.
+10:05:11.334 [LeafPlugin][PluginViewModel] Running scenario: home_marker
+10:05:49.212 [DefaultLeafScenarioManager] [  0.000s]RUNS: home_marker with args: []
+10:05:54.801 [DefaultLeafScenarioManager] [  5.592s]PASSED: home_marker
+10:05:54.802 [DefaultLeafScenarioManager] [  5.593s][home_marker] PASSED
+10:05:55.013 [LeafPlugin][PluginViewModel] ✅ Scenario home_marker completed successfully.
+10:06:16.189 [LeafPlugin][PluginViewModel] Running scenario: map_detail
+10:07:58.502 [DefaultLeafScenarioManager] [  0.000s]RUNS: map_detail with args: []
+10:08:04.030 [DefaultLeafScenarioManager] [  5.532s]PASSED: map_detail
+10:08:04.039 [DefaultLeafScenarioManager] [  5.541s][map_detail] PASSED
+10:08:04.325 [LeafPlugin][PluginViewModel] ✅ Scenario map_detail completed successfully.
+10:08:15.638 [LeafPlugin][PluginViewModel] Running scenario: quake_details
+10:10:22.535 [DefaultLeafScenarioManager] [  0.000s]RUNS: quake_details with args: []
+10:10:24.970 [DefaultLeafScenarioManager] [  2.468s]PASSED: quake_details
+10:10:24.971 [DefaultLeafScenarioManager] [  2.469s][quake_details] PASSED
+10:10:25.168 [LeafPlugin][PluginViewModel] ✅ Scenario quake_details completed successfully.
+10:10:35.334 [LeafPlugin][PluginViewModel] Running scenario: alert

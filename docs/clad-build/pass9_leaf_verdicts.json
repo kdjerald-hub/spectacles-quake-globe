@@ -1,0 +1,107 @@
+{
+ "window": [
+  "09:18:09",
+  "10:12:34"
+ ],
+ "calls": [
+  {
+   "call": "09:47:50",
+   "scenario": "map_detail",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "09:48:09",
+   "runs": "09:56:30",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "09:56:43"
+  },
+  {
+   "call": "09:56:50",
+   "scenario": "quake_details",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "09:56:59",
+   "runs": "09:59:13",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "09:59:21"
+  },
+  {
+   "call": "09:59:27",
+   "scenario": "alert",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "09:59:34",
+   "runs": "10:01:03",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "10:01:07"
+  },
+  {
+   "call": "10:01:14",
+   "scenario": "cover_spot",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "10:01:20",
+   "runs": "10:02:45",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "10:02:51"
+  },
+  {
+   "call": "10:02:57",
+   "scenario": "emergency_contacts",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "10:03:04",
+   "runs": "10:04:55",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "10:05:04"
+  },
+  {
+   "call": "10:05:07",
+   "scenario": "home_marker",
+   "debug": false,
+   "mcp": "returned succeeded",
+   "started": "10:05:11",
+   "runs": "10:05:49",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "10:05:54"
+  },
+  {
+   "call": "10:06:09",
+   "scenario": "map_detail",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "10:06:16",
+   "runs": "10:07:58",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "10:08:04"
+  },
+  {
+   "call": "10:08:08",
+   "scenario": "quake_details",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "10:08:15",
+   "runs": "10:10:22",
+   "leaf_tool": null,
+   "verdict": "succeeded",
+   "at": "10:10:24"
+  },
+  {
+   "call": "10:10:28",
+   "scenario": "alert",
+   "debug": false,
+   "mcp": "timed out",
+   "started": "10:10:35",
+   "runs": null,
+   "leaf_tool": null,
+   "verdict": null,
+   "at": null
+  }
+ ]
+}
