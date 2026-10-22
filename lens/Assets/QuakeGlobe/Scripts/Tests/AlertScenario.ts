@@ -19,6 +19,19 @@
 // Removed from the pre-map version (the globe is hidden during the alert, so they no longer
 // apply): the on-globe epicentre distance label ("15 km from home") and its text, and the checks
 // that no globe map label overlaps that label or the epicentre ring.
+//
+// Added after the narrated-cut review (2026-10-22):
+//   - The zoom never covers the text: an UpdateEvent samples every frame from the alert pinch to
+//     the globe's return and measures, from the camera, the globe's drawn angular radius
+//     (asin(grown radius / distance)) against the angle to the nearest visible backplate top (the
+//     alert card's during the zoom in, the dashboard's during the zoom out). The sphere's disc
+//     must stay short of both at every sampled frame, and both cross-fade windows must actually
+//     have been sampled. At the old GLOBE_GROW of 2.2 the disc overshot the card by ~7 degrees,
+//     so this check would have caught that bug on its first frame.
+//   - While the map is up, no drawn coastline, plate line or ring crosses any map label's box
+//     (the drawn geometry comes from LocalMapView.lastBuildDebug, which holds the final cut
+//     centre lines), and no drawn coastline comes within the published clear margin of the
+//     home-epicentre segment (so the warm dashes never add into the white coast).
 
 import { Scenario } from "Leaf.lspkg/Scenarios/scenario/Scenario";
 import { ScenarioConfig } from "Leaf.lspkg/Scenarios/scenario/ScenarioConfig";
@@ -30,6 +43,10 @@ import { estimateTextWidthEm } from "../../Core/labels";
 import { mapRadiusKm, projectLocal, ringLabel, ringsKm } from "../../Core/localmap";
 import { compass8 } from "../../Core/geolookup";
 import { SIMULATED_QUAKE, formatDistanceKm, greatCircleKm } from "../Emergency";
+import { PADDING_CM } from "../EmergencyUi";
+import { PANEL_PADDING_CM } from "../QuakeGlobeLens";
+import { LocalMapView } from "../LocalMapView";
+import type { Box as MapBox } from "../LocalMapView";
 import {
   interactableReady,
   objectEnabled,
@@ -126,11 +143,98 @@ function mapLabelBoxes(camera: Camera): { text: string; box: ScreenBox }[] {
   return out;
 }
 
+/**
+ * True when the segment (x0, y0)-(x1, y1) passes within `pad` of box `b` (its own slab test, so
+ * the check does not reuse the Lens's cutting code). `pad` carries the drawn line's half width:
+ * a ribbon whose edge touches the box counts as crossing it.
+ */
+function segmentCrossesBox(x0: number, y0: number, x1: number, y1: number, b: MapBox, pad: number): boolean {
+  let t0 = 0;
+  let t1 = 1;
+  const axes: [number, number, number, number][] = [
+    [x0, x1 - x0, b.x0 - pad, b.x1 + pad],
+    [y0, y1 - y0, b.y0 - pad, b.y1 + pad],
+  ];
+  for (const [p, d, lo, hi] of axes) {
+    if (Math.abs(d) < 1e-12) {
+      if (p < lo || p > hi) return false;
+      continue;
+    }
+    let a = (lo - p) / d;
+    let z = (hi - p) / d;
+    if (a > z) {
+      const swap = a;
+      a = z;
+      z = swap;
+    }
+    t0 = Math.max(t0, a);
+    t1 = Math.min(t1, z);
+    if (t0 >= t1) return false;
+  }
+  return true;
+}
+
+function polylinesCrossBox(polylines: readonly number[][], b: MapBox, pad: number): boolean {
+  for (const line of polylines) {
+    for (let i = 0; i + 3 < line.length; i += 2) {
+      if (segmentCrossesBox(line[i], line[i + 1], line[i + 2], line[i + 3], b, pad)) return true;
+    }
+  }
+  return false;
+}
+
+function pointSegDist(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 < 1e-12 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2));
+  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+
+/** Distance between two segments: 0 when they intersect, else the least endpoint-to-segment gap. */
+function segSegDist(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx2: number, dy2: number,
+): number {
+  const cross = (ox: number, oy: number, px: number, py: number, qx: number, qy: number): number =>
+    (px - ox) * (qy - oy) - (py - oy) * (qx - ox);
+  const d1 = cross(cx, cy, dx2, dy2, ax, ay);
+  const d2 = cross(cx, cy, dx2, dy2, bx, by);
+  const d3 = cross(ax, ay, bx, by, cx, cy);
+  const d4 = cross(ax, ay, bx, by, dx2, dy2);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+  return Math.min(
+    pointSegDist(ax, ay, cx, cy, dx2, dy2),
+    pointSegDist(bx, by, cx, cy, dx2, dy2),
+    pointSegDist(cx, cy, ax, ay, bx, by),
+    pointSegDist(dx2, dy2, ax, ay, bx, by),
+  );
+}
+
+/** What the per-frame zoom-cover sampler accumulates over the whole alert run. */
+interface ZoomCoverStats {
+  /** Least angular clearance seen (degrees): target angle minus the globe's drawn disc angle. */
+  worstDeg: number;
+  /** Which backplate top the worst frame measured against ("alert card" or "dashboard"). */
+  worstAt: string;
+  /** Cross-fade frames sampled with the alert card up (the zoom in). */
+  zoomInFrames: number;
+  /** Cross-fade frames sampled after the card closed (the zoom out). */
+  zoomOutFrames: number;
+}
+
 @component
 export class AlertScenario extends Scenario {
   async run(_config?: ScenarioConfig): Promise<void> {
     const interactor = new DefaultLeafInteractor();
     await resetState(interactor);
+
+    // Sample every frame from here to the globe's return: the zoom must never cover any part of
+    // the alert card or the dashboard (narrated-cut review 2026-10-22). See sampleZoomCover.
+    const zoomStats: ZoomCoverStats = { worstDeg: Infinity, worstAt: "none", zoomInFrames: 0, zoomOutFrames: 0 };
+    const camTransform = WorldCameraFinderProvider.getInstance().getTransform();
+    const sampler = this.createEvent("UpdateEvent");
+    sampler.bind(() => this.sampleZoomCover(zoomStats, camTransform));
 
     // Fire the simulated phone alert; the card must show within one second (done criterion 3).
     await triggerButton(interactor, "Button Phone alert received");
@@ -274,6 +378,46 @@ export class AlertScenario extends Scenario {
       `No two map labels should overlap (overlapping: ${overlaps.length > 0 ? overlaps.join("; ") : "none"})`,
     ).toBe(true);
 
+    // The map's lines keep out of its labels' boxes (narrated-cut review 2026-10-22): in the final
+    // drawn geometry (LocalMapView.lastBuildDebug holds the cut centre lines actually meshed), no
+    // coastline, plate line or ring may pass within its half width of any label's box - a gap must
+    // have been cut wherever a line would have crossed.
+    const dbg = LocalMapView.lastBuildDebug;
+    expect(dbg !== null, "LocalMapView should publish its drawn geometry for the map checks").toBe(true);
+    const crossings: string[] = [];
+    for (const label of dbg!.labels) {
+      for (const line of dbg!.lines) {
+        if (line.kind === "dash") continue; // the dashes are the line labels already keep clear of
+        if (polylinesCrossBox(line.polylines, label.box, line.halfWidthCm)) {
+          crossings.push(`${line.kind} x "${label.text}"`);
+        }
+      }
+    }
+    expect(
+      crossings.length === 0,
+      `No drawn coastline, plate line or ring should cross a map label's box (crossing: ${crossings.length > 0 ? crossings.join("; ") : "none"})`,
+    ).toBe(true);
+
+    // No drawn coastline comes within the clear margin of the home-epicentre segment, so the warm
+    // dashes never add into the white coast on the additive display (narrated-cut review).
+    let coastGapCm = Infinity;
+    for (const line of dbg!.lines) {
+      if (line.kind !== "coast") continue;
+      for (const poly of line.polylines) {
+        for (let i = 0; i + 3 < poly.length; i += 2) {
+          coastGapCm = Math.min(
+            coastGapCm,
+            segSegDist(poly[i], poly[i + 1], poly[i + 2], poly[i + 3], 0, 0, dbg!.epicentreCm.x, dbg!.epicentreCm.y),
+          );
+        }
+      }
+    }
+    print(`alert map: nearest drawn coastline ${coastGapCm.toFixed(3)} cm from the home-epicentre segment (margin ${dbg!.segmentClearCm.toFixed(3)} cm)`);
+    expect(
+      coastGapCm >= dbg!.segmentClearCm - 1e-6,
+      `The drawn coastline should keep ${dbg!.segmentClearCm.toFixed(2)} cm clear of the home-epicentre segment (got ${coastGapCm.toFixed(3)} cm)`,
+    ).toBe(true);
+
     const distance = textUnderParent("Distance", "Alert During");
     expect(distance !== undefined, "Distance text should exist on the alert card").toBe(true);
     expect(
@@ -303,6 +447,76 @@ export class AlertScenario extends Scenario {
     expect(panelBack, "The main panel should come back after I'm safe").toBe(true);
     for (const name of PANEL_BUTTONS) {
       expect(interactableReady(name), `"${name}" should be reachable again after I'm safe`).toBe(true);
+    }
+
+    // The zoom never covered the text (narrated-cut review 2026-10-22): over every sampled frame,
+    // the globe's drawn disc stayed short of the nearest visible backplate top, and both
+    // cross-fade windows (in with the card up, out with the dashboard back) were really sampled.
+    this.removeEvent(sampler);
+    print(
+      `alert zoom: worst clearance ${zoomStats.worstDeg === Infinity ? "none" : zoomStats.worstDeg.toFixed(2)} deg ` +
+        `(against the ${zoomStats.worstAt}), ${zoomStats.zoomInFrames} zoom-in and ${zoomStats.zoomOutFrames} zoom-out frames sampled`,
+    );
+    expect(zoomStats.zoomInFrames >= 3, `The zoom in should be sampled frame by frame (got ${zoomStats.zoomInFrames} frames)`).toBe(true);
+    expect(zoomStats.zoomOutFrames >= 3, `The zoom out should be sampled frame by frame (got ${zoomStats.zoomOutFrames} frames)`).toBe(true);
+    expect(
+      zoomStats.worstDeg > 0.03,
+      `The globe should never cover the alert card or the dashboard during the zoom ` +
+        `(worst clearance ${zoomStats.worstDeg.toFixed(2)} deg against the ${zoomStats.worstAt})`,
+    ).toBe(true);
+  }
+
+  /**
+   * One frame of the zoom-cover check. Seen from the camera the globe's drawn sphere (collider
+   * radius x the spinning content's world scale, which carries the zoom's grow) is an angular
+   * disc of half-angle asin(radius / distance); the alert card and the dashboard hang below the
+   * globe, so each one's point nearest that disc is its backplate's top edge centre (1.5 paddings
+   * above the card's origin, one padding above the panel's). The frame's clearance is the angle
+   * from the globe-centre ray to that point minus the disc's half-angle: negative would mean the
+   * globe covers part of the plate, and so possibly its letters. Frames with the globe hidden
+   * cover nothing and frames with neither plate visible have nothing to cover.
+   */
+  private sampleZoomCover(stats: ZoomCoverStats, camTransform: Transform): void {
+    const content = findSceneObjectByName("Globe Content");
+    const globe = findSceneObjectByName("Globe");
+    if (isNull(content) || isNull(globe) || !content!.isEnabledInHierarchy) return;
+    const collider = globe!.getComponent("Physics.ColliderComponent") as ColliderComponent;
+    const baseR = isNull(collider) ? 12 : (collider.shape as SphereShape).radius;
+    const drawnR = baseR * content!.getTransform().getWorldScale().y;
+    const eye = camTransform.getWorldPosition();
+    const centre = globe!.getTransform().getWorldPosition();
+    const d = eye.distance(centre);
+    if (d <= drawnR + 1) return;
+    const sphereDeg = Math.asin(Math.min(0.999, drawnR / d)) * DEG;
+    const toCentre = centre.sub(eye).normalize();
+    // Both plates hang below the globe when posed. This sampler runs in UpdateEvent, BEFORE the
+    // Lens's LateUpdate poses a plate enabled this very frame, so a just-enabled card still
+    // carries its stale transform (at the globe's centre) for one read - a frame that never
+    // renders that way. A top that is not below the globe's centre is such a stale read: skip it.
+    const targets: { name: string; top: vec3 }[] = [];
+    const addTarget = (name: string, obj: SceneObject | null, topLocalY: number): void => {
+      if (obj === null || isNull(obj) || !obj.enabled) return;
+      const t = obj.getTransform();
+      const top = t.getWorldPosition().add(t.getWorldRotation().multiplyVec3(new vec3(0, topLocalY, 0)));
+      if (top.y < centre.y) targets.push({ name, top });
+    };
+    const cardObj = findSceneObjectByName("Alert Card");
+    addTarget("alert card", cardObj, 1.5 * PADDING_CM);
+    addTarget("dashboard", findSceneObjectByName("Panel"), PANEL_PADDING_CM);
+    if (targets.length === 0) return;
+    for (const target of targets) {
+      const v = target.top.sub(eye);
+      const dot = Math.max(-1, Math.min(1, v.normalize().dot(toCentre)));
+      const clearanceDeg = Math.acos(dot) * DEG - sphereDeg;
+      if (clearanceDeg < stats.worstDeg) {
+        stats.worstDeg = clearanceDeg;
+        stats.worstAt = target.name;
+      }
+    }
+    // Count the cross-fade frames actually sampled: globe drawn AND map up, split by direction.
+    if (objectEnabled("Local Map")) {
+      if (!isNull(cardObj) && cardObj!.enabled) stats.zoomInFrames++;
+      else stats.zoomOutFrames++;
     }
   }
 }

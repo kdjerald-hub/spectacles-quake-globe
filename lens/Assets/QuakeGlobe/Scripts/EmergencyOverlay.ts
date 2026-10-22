@@ -93,6 +93,12 @@ export interface GlobeContext {
   setGlobeVisible: (visible: boolean) => void;
   /** Fade the globe's materials toward black for the zoom's cross-fade (1 restores them). */
   setGlobeFade: (k: number) => void;
+  /**
+   * The dashboard's visible top (its backplate's top edge centre) in world space, or null while
+   * the panel is hidden. The zoom caps the globe's growth so the globe never covers any part of
+   * the dashboard on the way back out (narrated-cut review 2026-10-22).
+   */
+  dashboardTopWorld: () => vec3 | null;
 }
 
 type Mode = "normal" | "home" | "cover";
@@ -182,8 +188,18 @@ const TURN_S = 0.9;
 const ZOOM_S = 0.8;
 /** The map starts at this share of its full size, growing to 1 as the zoom completes. */
 const MAP_START_SCALE = 0.3;
-/** The globe grows to this multiple while it fades out, selling the dive into the surface. */
+/**
+ * The globe grows toward this multiple while it fades out, selling the dive into the surface -
+ * but only as far as the gap to the alert card (zoom in) or the dashboard (zoom out) allows.
+ * At 2.2 x the globe swept over the card and cut letters out of "Drop, Cover, Hold On": the
+ * line materials write depth and text depth-tests, so even a fully faded globe still hides text
+ * behind it (narrated-cut review 2026-10-22). maxGlobeGrow() caps the growth each frame so the
+ * grown sphere, seen from the camera, never reaches the card's or the dashboard's backplate top;
+ * with the current layout that allows a few per cent, and the map's growth carries the zoom.
+ */
 const GLOBE_GROW = 2.2;
+/** The grown globe keeps at least this much visual clearance (cm at the card) to card and dashboard. */
+const ZOOM_CLEAR_MARGIN_CM = 0.5;
 
 /** Smoothstep: eases both ends of the zoom so neither the globe nor the map pops. */
 function easeSmooth(u: number): number {
@@ -660,10 +676,46 @@ export class EmergencyOverlay {
     this.mapView.setTransition(mapScale, -e.x * mapScale * (1 - u), -e.y * mapScale * (1 - u));
     this.mapView.applyFade(u, pulse(this.elapsed, EPICENTER_PULSE));
     if (this.zoomPhase !== "map") {
-      const g = 1 + (GLOBE_GROW - 1) * u;
+      const grow = Math.min(GLOBE_GROW, this.maxGlobeGrow());
+      const g = 1 + (grow - 1) * u;
       this.ctx.content.getTransform().setLocalScale(new vec3(g, g, g));
       this.ctx.setGlobeFade(1 - u);
     }
+  }
+
+  /**
+   * How far the globe may grow this frame before it would cover any part of the alert card or
+   * the dashboard (narrated-cut review 2026-10-22). Seen from the camera the globe is an angular
+   * disc of half-angle asin(g * R * s / d); the card and the dashboard hang below the globe, so
+   * their backplates' top edge centres are their points nearest that disc. The cap keeps the disc
+   * at least ZOOM_CLEAR_MARGIN_CM (as an angle at each target's distance) short of every visible
+   * target, so no letter - nor the plate's lit border - is ever behind the grown globe, whatever
+   * the camera does during the zoom. With nothing visible below (not the case during an alert)
+   * the full GLOBE_GROW stands. Never returns less than 1: the globe is not shrunk below its
+   * resting size, which the layout already keeps clear of both plates at the default scale.
+   */
+  private maxGlobeGrow(): number {
+    const eye = this.ctx.cameraTransform().getWorldPosition();
+    const handleT = this.ctx.handle.getTransform();
+    const centre = handleT.getWorldPosition();
+    const d = Math.max(1, eye.distance(centre));
+    const toCentre = centre.sub(eye).normalize();
+    const drawnR = this.ctx.globeRadiusCm * handleT.getWorldScale().y;
+    let minAngle = Infinity;
+    const consider = (top: vec3 | null): void => {
+      if (top === null) return;
+      const v = top.sub(eye);
+      const dist = Math.max(1, v.length);
+      const dot = Math.max(-1, Math.min(1, v.normalize().dot(toCentre)));
+      minAngle = Math.min(minAngle, Math.acos(dot) - Math.atan(ZOOM_CLEAR_MARGIN_CM / dist));
+    };
+    if (this.alertCard.visible) {
+      const t = this.alertCard.root.getTransform();
+      consider(t.getWorldPosition().add(t.getWorldRotation().multiplyVec3(new vec3(0, this.alertCard.plateRect.topCm, 0))));
+    }
+    consider(this.ctx.dashboardTopWorld());
+    if (minAngle === Infinity) return GLOBE_GROW;
+    return Math.max(1, (d * Math.sin(Math.max(0, minAngle))) / drawnR);
   }
 
   private poseCard(card: { root: SceneObject; anyHovered: () => boolean }, center: vec3, camPos: vec3, heightCm: number): void {

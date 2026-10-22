@@ -74,7 +74,9 @@ const FETCH_TIMEOUT_SECONDS = 20;
 // buttons at least 2 degrees tall with 1 degree gaps (Snap's minimum target size and spacing).
 const PANEL_WIDTH_CM = 30;
 const PANEL_GAP_CM = 2.5;
-const PANEL_PADDING_CM = 1.2;
+/** Backplate padding around the panel's content; exported for the alert zoom-cover LEAF check,
+ * which rebuilds the dashboard's visible top (the plate's top edge, this far above the origin). */
+export const PANEL_PADDING_CM = 1.2;
 const BUTTON_HEIGHT_CM = 3.6;
 const BUTTON_GAP_CM = 1.8;
 const LINE_GAP_CM = 0.25;
@@ -327,6 +329,14 @@ export class QuakeGlobeLens extends BaseScriptComponent {
       // drives the cross-fade, the Lens owns the globe's visuals.
       setGlobeVisible: (visible: boolean) => this.setGlobeVisible(visible),
       setGlobeFade: (k: number) => this.setGlobeFade(k),
+      // The dashboard's visible top - its backplate's top edge centre, PANEL_PADDING_CM above the
+      // panel's origin - so the zoom can cap the globe's growth short of it (narrated-cut review
+      // 2026-10-22). Null while the panel is hidden (it steps aside during the alert).
+      dashboardTopWorld: () => {
+        if (!this.panel.enabled) return null;
+        const t = this.panel.getTransform();
+        return t.getWorldPosition().add(t.getWorldRotation().multiplyVec3(new vec3(0, PANEL_PADDING_CM, 0)));
+      },
     };
   }
 
