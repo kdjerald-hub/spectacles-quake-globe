@@ -90,7 +90,10 @@ Made for the Learn AR with SPECS hackathon:
   - the map's land tint and a warm dashed line from home to the epicentre, after an AI-assisted
     check of the first recording with the map;
   - the two demo-video drivers, the LEAF scenarios `demo_alert` and `demo_globe`, written fresh
-    from a shot list.
+    from a shot list;
+  - the review of the narrated cut: the zoom never hides the alert card's or the dashboard's
+    text, map labels keep clear of lines, and the coastline gives way to the dashed line
+    (finished after a usage limit).
 
   Each pass's prompt and report are in [docs/clad-build/](docs/clad-build/).
 - **Tested** with LEAF: one scenario for each done criterion, plus the home marker. They run in the

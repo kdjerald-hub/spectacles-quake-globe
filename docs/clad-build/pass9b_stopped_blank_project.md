@@ -32,7 +32,7 @@ none run
 
 ## Note
 
-After the restart, Lens Studio opened a new blank project instead of QuakeGlobe. This first try at pass 9b only read files and queried the editor; the orchestrating session stopped it after a few minutes, reopened QuakeGlobe, and ran pass 9b again with the same prompt. It has no final report and is not counted in the totals.
+After the restart, Lens Studio opened a new blank project instead of QuakeGlobe. This first try at pass 9b only read files, recompiled the scripts twice and queried the editor; the orchestrating session stopped it after a few minutes, reopened QuakeGlobe, and ran pass 9b again with the same prompt. It has no final report and is not counted in the totals.
 
 ## The agent's final report
 
