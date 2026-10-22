@@ -3,8 +3,9 @@
 // second (the "during" page). Within 3 s of the pinch the globe must zoom into the map of my area:
 // the map is shown and the globe hidden, home sits at the map's centre, the epicentre lies at its
 // true direction from home on screen (south for the demo home) within 20 degrees, its distance
-// from home on the map matches the real distance at the map's scale within 5 %, the three ring
-// labels and the distance label ("15 km S") exist, and no two map labels overlap. The dashboard
+// from home on the map matches the real distance at the map's scale within 5 %, the map's land
+// mesh exists and is not empty (the land tint; the sea stays clear by not being drawn), the three
+// ring labels and the distance label ("15 km S") exist, and no two map labels overlap. The dashboard
 // checks stay: the main panel and its buttons hide while the alert is open (both stages) and come
 // back after "I'm safe", and the alert card keeps the panel's place - centred below the globe (and
 // so below the map, which takes the globe's place) at about 1 m. After "I'm safe" the map must
@@ -173,6 +174,21 @@ export class AlertScenario extends Scenario {
     // globe (its spinning content with every quake) is hidden.
     const zoomed = await waitUntil(() => objectEnabled("Local Map") && !objectEnabled("Globe Content"), 3000);
     expect(zoomed, "The local map should be shown and the globe hidden within 3 s of the alert").toBe(true);
+
+    // The land tint (checking-the-map note 2026-10-22): the map's land mesh exists and is not
+    // empty while the map is up. An empty land would never get a mesh (triangleRenderMesh returns
+    // null and createMeshObject then disables the visual), so an enabled visual with a mesh IS a
+    // non-empty land.
+    const land = findSceneObjectByName("Map land 0");
+    expect(
+      !isNull(land) && land!.isEnabledInHierarchy,
+      "The map's land object should exist and be enabled while the map is up",
+    ).toBe(true);
+    const landVisual = isNull(land) ? null : (land!.getComponent("Component.RenderMeshVisual") as RenderMeshVisual);
+    expect(
+      landVisual !== null && !isNull(landVisual) && landVisual.enabled && !isNull(landVisual.mesh),
+      "The map's land mesh should exist and be non-empty",
+    ).toBe(true);
 
     const mapHome = findSceneObjectByName("Map home marker");
     const mapEpi = findSceneObjectByName("Map epicentre marker");

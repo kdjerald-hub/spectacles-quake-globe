@@ -3,10 +3,11 @@
 // A flat disc in the globe's place: same centre, the globe's radius in cm standing for the map's
 // radiusKm, facing the viewer, north up and east to the right, so every distance from home on it
 // is true (the content comes from Core/localmap's azimuthal equidistant projection). It shows the
-// three distance rings with their labels and a small "N", the coastline in the globe's coastline
-// colour, the plate boundaries in the globe's quiet plate colour, home at the centre, the
-// epicentre in the quake's red with a pulsing ring, the home-to-epicentre line with the distance
-// and direction ("15 km S"), and the nearby place names. No live quakes: the alert replays a 2024
+// land as a faint tint under everything (the sea stays clear: on an additive display it is simply
+// not drawn), the three distance rings with their labels and a small "N", the coastline in the
+// globe's coastline colour, the plate boundaries in the globe's quiet plate colour, home at the
+// centre, the epicentre in the quake's red with a pulsing ring, the home-to-epicentre line as a
+// warm dashed line with the distance and direction ("15 km S"), and the nearby place names. No live quakes: the alert replays a 2024
 // event, and today's quakes on the same map would mix two times.
 //
 // The display is additive, so every mesh uses the additive glow material (light on dark, no dark
@@ -19,7 +20,7 @@
 // against the boxes already on the map, falling back through candidate offsets; a place name that
 // fits nowhere is dropped (the rings and markers matter more than a sixth town).
 
-import type { LocalMap } from "../Core/localmap";
+import type { LocalMap, LocalMesh } from "../Core/localmap";
 import { ringLabel } from "../Core/localmap";
 import { estimateTextWidthEm } from "../Core/labels";
 import type { TriangleMesh } from "../Core/markers";
@@ -30,14 +31,17 @@ import { createText } from "./LensUi";
 import type { Quat } from "../Core/geo";
 
 // Quiet reference colours. The rings sit between the graticule and the coastline in brightness;
-// the plate colour matches QuakeGlobeLens.PLATE_LINE_COLOR, the line and home colours match
-// EmergencyOverlay's LINE_COLOR / HOME_COLOR, the place colour matches MapLabels' land colour and
-// the distance label's warm matches the old on-globe epicentre label. The quakes stay the only
-// saturated colour: the epicentre marker's red is passed in by the overlay.
+// the plate colour matches QuakeGlobeLens.PLATE_LINE_COLOR, the home colour matches
+// EmergencyOverlay's HOME_COLOR, the place colour matches MapLabels' land colour and the distance
+// label's warm matches the old on-globe epicentre label. The home-epicentre line shares the
+// distance label's warm and is dashed, so it cannot read as part of the cool coastline (checking-
+// the-map note 2026-10-22). The land tint is a dim fill in the coastline's cool family: visible
+// as land in a 1080p recording, clearly quieter than every line and label on the map. The quakes
+// stay the only saturated colour: the epicentre marker's red is passed in by the overlay.
+const LAND_COLOR: [number, number, number] = [0.1, 0.14, 0.18];
 const RING_COLOR: [number, number, number] = [0.45, 0.58, 0.72];
 const RING_LABEL_COLOR: [number, number, number] = [0.72, 0.82, 0.92];
 const PLATE_COLOR: [number, number, number] = [0.52, 0.44, 0.66];
-const LINE_COLOR: [number, number, number] = [0.6, 0.9, 1.0];
 const HOME_COLOR: [number, number, number] = [0.5, 0.9, 1.0];
 const PLACE_COLOR: [number, number, number] = [0.95, 0.94, 0.86];
 const DISTANCE_COLOR: [number, number, number] = [1.0, 0.85, 0.6];
@@ -47,6 +51,9 @@ const RING_WIDTH_F = 0.004;
 const COAST_WIDTH_F = 0.008;
 const PLATE_WIDTH_F = 0.005;
 const LINE_WIDTH_F = 0.008;
+/** The home-epicentre line's dashes: nominal dash and gap lengths as fractions of the map radius. */
+const LINE_DASH_F = 0.045;
+const LINE_GAP_F = 0.03;
 const HOME_OCTA_F = 0.035;
 const HOME_RING_INNER_F = 0.052;
 const HOME_RING_OUTER_F = 0.062;
@@ -54,9 +61,10 @@ const EPI_OCTA_F = 0.04;
 const EPI_RING_INNER_F = 0.075;
 const EPI_RING_OUTER_F = 0.09;
 
-// Z offsets toward the viewer (cm): plates under coast under rings under the line under markers,
-// labels on top. All materials are additive and non-depth-writing, so these only fix draw order
-// against the text's depth test.
+// Z offsets toward the viewer (cm): the land tint under plates under coast under rings under the
+// line under markers, labels on top. All materials are additive and non-depth-writing, so these
+// only fix draw order against the text's depth test.
+const Z_LAND = 0.01;
 const Z_PLATES = 0.02;
 const Z_COAST = 0.06;
 const Z_RINGS = 0.1;
@@ -130,6 +138,38 @@ function flatRibbonMeshes(polylines: readonly number[][], scale: number, width: 
   return out;
 }
 
+/**
+ * The land tint as triangle meshes in the map's plane: Core/localmap's flat km triangles scaled to
+ * cm at `z`, normal +Z (the triangles come counter-clockwise from the core's triangulation, the
+ * face the viewer sees). Packs triangles into as few meshes as the 16-bit index limit allows,
+ * remapping vertex indices per chunk.
+ */
+function landMeshes(land: LocalMesh, scale: number, z: number): TriangleMesh[] {
+  const out: TriangleMesh[] = [];
+  let m: TriangleMesh = { positions: [], normals: [], indices: [] };
+  let remap = new Map<number, number>();
+  for (let t = 0; t + 2 < land.indices.length; t += 3) {
+    if (m.positions.length / 3 > 65000) {
+      out.push(m);
+      m = { positions: [], normals: [], indices: [] };
+      remap = new Map<number, number>();
+    }
+    for (let k = 0; k < 3; k++) {
+      const src = land.indices[t + k];
+      let dst = remap.get(src);
+      if (dst === undefined) {
+        dst = m.positions.length / 3;
+        remap.set(src, dst);
+        m.positions.push(land.positions[2 * src] * scale, land.positions[2 * src + 1] * scale, z);
+        m.normals.push(0, 0, 1);
+      }
+      m.indices.push(dst);
+    }
+  }
+  if (m.indices.length > 0) out.push(m);
+  return out;
+}
+
 export class LocalMapView {
   private readonly parent: SceneObject;
   private readonly baseMaterial: Material;
@@ -184,6 +224,11 @@ export class LocalMapView {
       this.passes.push({ pass: material.mainPass, rgb, pulse });
     };
 
+    // The land, a faint fill under everything in the map's plane; the sea is simply not drawn
+    // (checking-the-map note 2026-10-22). Registered like every pass, so it fades and scales
+    // with the rest of the map through the zoom.
+    landMeshes(map.land, cmPerKm, Z_LAND).forEach((m, i) => mesh("Map land " + i, m, LAND_COLOR));
+
     const ringW = R * RING_WIDTH_F;
     map.ringsKm.forEach((km, i) => {
       const r = km * cmPerKm;
@@ -191,9 +236,27 @@ export class LocalMapView {
     });
     flatRibbonMeshes(map.coast, cmPerKm, R * COAST_WIDTH_F, Z_COAST).forEach((m, i) => mesh("Map coast " + i, m, COASTLINE_COLOR));
     flatRibbonMeshes(map.plates, cmPerKm, R * PLATE_WIDTH_F, Z_PLATES).forEach((m, i) => mesh("Map plates " + i, m, PLATE_COLOR));
-    flatRibbonMeshes([[0, 0, map.epicentre.x, map.epicentre.y]], cmPerKm, R * LINE_WIDTH_F, Z_LINE).forEach((m, i) =>
-      mesh("Map home line " + i, m, LINE_COLOR),
-    );
+    // The home-epicentre line, dashed and in the distance label's warm (checking-the-map note
+    // 2026-10-22): solid and cool it read as part of the coastline. The dash count is rounded so
+    // a dash ends exactly at each end: the ends stay at home and the epicentre. For a line shorter
+    // than one dash-gap period the count falls to 1 and the line is simply solid.
+    {
+      const lineLen = Math.hypot(ex, ey);
+      const dashes: number[][] = [];
+      if (lineLen > 1e-3) {
+        const gap = R * LINE_GAP_F;
+        const n = Math.max(1, Math.round((lineLen + gap) / (R * LINE_DASH_F + gap)));
+        const period = (lineLen + gap) / n;
+        const ux = ex / lineLen;
+        const uy = ey / lineLen;
+        for (let i = 0; i < n; i++) {
+          const s0 = i * period;
+          const s1 = s0 + period - gap;
+          dashes.push([ux * s0, uy * s0, ux * s1, uy * s1]);
+        }
+      }
+      flatRibbonMeshes(dashes, 1, R * LINE_WIDTH_F, Z_LINE).forEach((m, i) => mesh("Map home line " + i, m, DISTANCE_COLOR));
+    }
 
     meshAt("Map home marker", buildOctahedron(R * HOME_OCTA_F), HOME_COLOR, 0, 0, Z_MARKERS);
     meshAt("Map home ring", buildRing(R * HOME_RING_INNER_F, R * HOME_RING_OUTER_F, 64), HOME_COLOR, 0, 0, Z_MARKERS);
