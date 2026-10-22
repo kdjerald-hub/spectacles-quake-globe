@@ -2,21 +2,47 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildLocalMap,
+  clipPolygonToCircle,
   inDetailRegion,
+  landRingsToCoast,
   localMapFor,
   localPolylines,
   mapRadiusKm,
+  polygonArea,
   projectLocal,
   ringLabel,
   ringsKm,
+  triangulate,
 } from "../core/localmap.ts";
+import type { LocalMesh } from "../core/localmap.ts";
 import { compass8, greatCircleKm } from "../core/geolookup.ts";
-import { COASTLINE_10M_DETAIL, DETAIL_REGIONS, PLACES } from "../data/localdetail.ts";
+import { DETAIL_REGIONS, LAND_10M_DETAIL, LAND_50M, PLACES } from "../data/localdetail.ts";
 import { COASTLINE_50M } from "../data/coastline50m.ts";
 
 // The demo: home in Hualien City, and the M7.4 Hualien earthquake of 2024-04-03 (USGS us7000m9g4).
 const HOME = { lat: 23.9667, lon: 121.6 };
 const QUAKE = { lat: 23.8356, lon: 121.5976 };
+
+/** True when (x, y) lies in one of the mesh's triangles. */
+function inMesh(m: LocalMesh, x: number, y: number): boolean {
+  const P = m.positions;
+  for (let t = 0; t < m.indices.length; t += 3) {
+    const [a, b, c] = [m.indices[t], m.indices[t + 1], m.indices[t + 2]];
+    const cr = (i: number, j: number): number => (P[2 * j] - P[2 * i]) * (y - P[2 * i + 1]) - (P[2 * j + 1] - P[2 * i + 1]) * (x - P[2 * i]);
+    if (cr(a, b) >= 0 && cr(b, c) >= 0 && cr(c, a) >= 0) return true;
+  }
+  return false;
+}
+
+/** Total area of a mesh's triangles, each counted with its sign (counter-clockwise is positive). */
+function meshArea(m: LocalMesh): number {
+  let a = 0;
+  for (let t = 0; t < m.indices.length; t += 3) {
+    const tri = [m.indices[t], m.indices[t + 1], m.indices[t + 2]].flatMap((i) => [m.positions[2 * i], m.positions[2 * i + 1]]);
+    a += polygonArea(tri);
+  }
+  return a;
+}
 
 function rng(seed: number): () => number {
   let s = seed >>> 0;
@@ -135,6 +161,8 @@ test("the map's inputs are used as given (no hidden data)", () => {
     detailCoast: [],
     detailRegions: [],
     coarseCoast: [[-1, 0, 1, 0]],
+    detailLand: [],
+    coarseLand: [[-1, -1, 1, -1, 1, 0, -1, 0]],
     plates: [],
     places: [{ name: "Near", lat: 0, lon: 0.2, rank: 3 }, { name: "Home town", lat: 0.01, lon: 0, rank: 9 }],
   });
@@ -143,12 +171,14 @@ test("the map's inputs are used as given (no hidden data)", () => {
   assert.equal(m.plates.length, 0);
   assert.equal(m.homePlace, "Home town");
   assert.deepEqual(m.places.map((p) => p.name), ["Near"]);
+  assert.ok(m.land.indices.length > 0, "the coarse land is used");
+  assert.ok(inMesh(m.land, 0, -20) && !inMesh(m.land, 0, 20), "land south of the line, none north");
 });
 
-test("detail data: regions, coastline and places are well formed", () => {
+test("detail data: regions, land rings and places are well formed", () => {
   assert.equal(DETAIL_REGIONS.length, 3);
-  for (const line of COASTLINE_10M_DETAIL) {
-    assert.ok(line.length >= 4 && line.length % 2 === 0);
+  for (const line of [...LAND_10M_DETAIL, ...LAND_50M]) {
+    assert.ok(line.length >= 6 && line.length % 2 === 0);
     for (let i = 0; i < line.length; i += 2) {
       assert.ok(line[i] >= -180 && line[i] <= 180 && line[i + 1] >= -90 && line[i + 1] <= 90);
     }
@@ -156,4 +186,75 @@ test("detail data: regions, coastline and places are well formed", () => {
   assert.ok(PLACES.some((p) => p.name === "Hualien"));
   assert.ok(PLACES.every((p) => p.name.length > 0 && p.rank >= 0));
   assert.ok(COASTLINE_50M.length > 1000);
+});
+
+test("triangulate: area is preserved and every triangle runs counter-clockwise", () => {
+  const shapes: number[][] = [
+    [0, 0, 1, 0, 1, 1, 0, 1], // square
+    [0, 0, 2, 0, 2, 1, 1, 1, 1, 2, 0, 2], // L shape
+    [0, 0, 0, 2, 2, 2, 2, 0], // clockwise square
+  ];
+  const rand = rng(11);
+  for (let s = 0; s < 20; s++) {
+    // a random star: concave, simple
+    const star: number[] = [];
+    const n = 5 + Math.floor(rand() * 40);
+    for (let i = 0; i < n; i++) {
+      const a = (2 * Math.PI * i) / n;
+      const r = 1 + rand() * 4;
+      star.push(r * Math.cos(a), r * Math.sin(a));
+    }
+    shapes.push(star);
+  }
+  for (const p of shapes) {
+    const idx = triangulate(p);
+    assert.equal(idx.length % 3, 0);
+    assert.equal(idx.length / 3, p.length / 2 - 2, "n - 2 triangles");
+    const mesh = { positions: p, indices: idx };
+    assert.ok(Math.abs(meshArea(mesh) - Math.abs(polygonArea(p))) < 1e-9 * Math.max(1, Math.abs(polygonArea(p))));
+    for (let t = 0; t < idx.length; t += 3) {
+      const tri = [idx[t], idx[t + 1], idx[t + 2]].flatMap((i) => [p[2 * i], p[2 * i + 1]]);
+      assert.ok(polygonArea(tri) > 0);
+    }
+  }
+});
+
+test("clipPolygonToCircle: keeps what is inside the map's circle", () => {
+  const r = 10;
+  const big = [-40, -40, 40, -40, 40, 40, -40, 40];
+  const disc = clipPolygonToCircle(big, r);
+  const ideal = 0.5 * 96 * r * r * Math.sin((2 * Math.PI) / 96); // the inscribed 96-gon
+  assert.ok(Math.abs(polygonArea(disc) - ideal) < 1e-6, `${polygonArea(disc)} vs ${ideal}`);
+  const small = [-1, -1, 1, -1, 1, 1, -1, 1];
+  assert.ok(Math.abs(polygonArea(clipPolygonToCircle(small, r)) - 4) < 1e-9);
+  assert.equal(clipPolygonToCircle([20, 20, 30, 20, 30, 30], r).length, 0);
+  const half = clipPolygonToCircle([-40, -40, 40, -40, 40, 0, -40, 0], r);
+  assert.ok(Math.abs(polygonArea(half) - ideal / 2) < 0.02 * ideal, "the southern half");
+});
+
+test("landRingsToCoast: a ring's outline, without the edges cut at a region's box", () => {
+  const box = { id: "t", name: "T", box: [0, 0, 10, 10] as [number, number, number, number] };
+  // an island cut by the box's east edge (x = 10): its cut edge is not coast
+  const ring = [5, 2, 10, 2, 10, 8, 5, 8];
+  const coast = landRingsToCoast([ring], [box]);
+  assert.equal(coast.length, 1);
+  assert.deepEqual(coast[0], [10, 8, 5, 8, 5, 2, 10, 2]);
+  // a whole island: its full outline, closed
+  const whole = landRingsToCoast([[2, 2, 4, 2, 4, 4]], [box]);
+  assert.deepEqual(whole, [[2, 2, 4, 2, 4, 4, 2, 2]]);
+});
+
+test("the demo map's land: inland Taiwan is tinted, the sea east of Hualien is not", () => {
+  const m = localMapFor(HOME, QUAKE);
+  assert.ok(m.land.indices.length >= 3 && m.land.indices.length % 3 === 0);
+  for (let i = 0; i < m.land.positions.length; i += 2) {
+    assert.ok(Math.hypot(m.land.positions[i], m.land.positions[i + 1]) <= m.radiusKm + 1e-6);
+  }
+  assert.ok(inMesh(m.land, -20, 0), "20 km west of home: the Central Mountain Range");
+  assert.ok(!inMesh(m.land, 20, 0), "20 km east of home: the Pacific");
+  assert.ok(!inMesh(m.land, m.epicentre.x + 3, m.epicentre.y), "just east of the epicentre is sea");
+  const lisbon = localMapFor({ lat: 38.72, lon: -9.14 }, { lat: 38.4, lon: -9.6 });
+  assert.equal(lisbon.detail, false);
+  assert.ok(inMesh(lisbon.land, 25, 0), "inland Portugal");
+  assert.ok(!inMesh(lisbon.land, -30, 0), "the Atlantic");
 });

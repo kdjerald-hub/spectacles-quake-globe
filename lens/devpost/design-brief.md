@@ -196,6 +196,15 @@ details below are the agent's, within that proposal. For the Lens:
 Done criterion 3 now reads: pinching "Phone alert received" shows the alert card within a second,
 marks the epicenter on a map of my area, and shows its distance from my home.
 
+## Notes from checking the map of your area (2026-10-22)
+An AI-assisted check of the first recording with the map; the learner asked the agents to fix what
+they find. For the Lens:
+- The coastline is a single line, so the map does not say which side is land. Tint the land faintly
+  and leave the sea clear; then "home on the coast, the quake just offshore to the south" reads at a
+  glance. The land comes from the same Natural Earth outline as the coastline, so the two match.
+- The line from home to the epicentre runs alongside the coast and reads as part of it. Make it a
+  warm dashed line, in the colour of its "15 km S" label.
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.

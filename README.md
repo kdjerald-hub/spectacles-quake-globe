@@ -122,7 +122,7 @@ lens/            complete Lens Studio project (SPECS 27, Interaction Kit, UI Kit
                  scripts in lens/Assets/QuakeGlobe, LEAF scenarios in Scripts/Tests,
                  the plan-lens brief in lens/devpost
 web-preview/     three.js preview driven by the same core
-tests/           105 tests, including runs against real USGS snapshots
+tests/           109 tests, including runs against real USGS snapshots
 tools/           build, local server, coastline converter, Lens type-check
 ```
 
@@ -143,7 +143,7 @@ Design decisions and their reasons: [docs/DESIGN.md](docs/DESIGN.md).
 
 | Check | How |
 |---|---|
-| Core logic, including real USGS snapshots | `npm test` (105 tests) |
+| Core logic, including real USGS snapshots | `npm test` (109 tests) |
 | Rendering and orientation | browser preview; probes confirm a selected event lands at screen centre with east to the right and north up, and that the innermost atmosphere ring sits just outside the globe's outline |
 | Lens scripts against the real Lens Studio API | strict TypeScript check against the official declarations for Lens Studio 5.12, 5.19 and 5.24 with Interaction Kit 0.17.2 / 0.18.0 and UI Kit 0.1.5 / 2.0.0: `node tools/typecheck/check-lens.mjs --dts <studio.d.ts> --sik <SIK root> --uikit <UI Kit root>` |
 | Running in Lens Studio | Lens Studio 5.24.1, SPECS 27 Preview, driven through Lens Studio's built-in MCP server: compiles, loads live USGS data, zero runtime errors or warnings. Simulated hand pinches on **Strongest**, **30 days** and **24 h** produce the expected globe turn, highlight, epicentre ring, detail text, legend and window switch. The atmosphere scale read back from the running Lens matches the formula at 100 cm and, after a simulated drag, at 50 cm |
@@ -155,7 +155,7 @@ Design decisions and their reasons: [docs/DESIGN.md](docs/DESIGN.md).
 Requires Node 23.6 or newer (TypeScript runs natively; there are no packages to install).
 
 ```bash
-npm test          # 105 tests
+npm test          # 109 tests
 npm run preview   # builds, then serves http://localhost:8765/web-preview/
 ```
 
