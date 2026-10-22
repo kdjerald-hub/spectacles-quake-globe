@@ -111,12 +111,14 @@ core/            platform-independent TypeScript, no dependencies, unit-tested i
   plates.ts      nearest plate boundary ("Subduction zone, Pacific and Okhotsk plates, 40 km away"), subduction barbs
   labels.ts      continent, ocean and country names: zoom budget, limb fade, no overlaps, pinned home
   hazards.ts     alert event and hazard profile (the alert's wording); only the earthquake one ships
-data/            generated from Natural Earth (coastlines, label points) and PB2002 (plate boundaries)
+  localmap.ts    the alert's map of your area: centred on home, true distances, clipped coastline
+data/            generated from Natural Earth (coastlines, label points, places) and PB2002 (plate
+                 boundaries); 1:10m detail for Taiwan, Japan and the US West Coast
 lens/            complete Lens Studio project (SPECS 27, Interaction Kit, UI Kit, LEAF);
                  scripts in lens/Assets/QuakeGlobe, LEAF scenarios in Scripts/Tests,
                  the plan-lens brief in lens/devpost
 web-preview/     three.js preview driven by the same core
-tests/           98 tests, including runs against real USGS snapshots
+tests/           105 tests, including runs against real USGS snapshots
 tools/           build, local server, coastline converter, Lens type-check
 ```
 
@@ -137,7 +139,7 @@ Design decisions and their reasons: [docs/DESIGN.md](docs/DESIGN.md).
 
 | Check | How |
 |---|---|
-| Core logic, including real USGS snapshots | `npm test` (98 tests) |
+| Core logic, including real USGS snapshots | `npm test` (105 tests) |
 | Rendering and orientation | browser preview; probes confirm a selected event lands at screen centre with east to the right and north up, and that the innermost atmosphere ring sits just outside the globe's outline |
 | Lens scripts against the real Lens Studio API | strict TypeScript check against the official declarations for Lens Studio 5.12, 5.19 and 5.24 with Interaction Kit 0.17.2 / 0.18.0 and UI Kit 0.1.5 / 2.0.0: `node tools/typecheck/check-lens.mjs --dts <studio.d.ts> --sik <SIK root> --uikit <UI Kit root>` |
 | Running in Lens Studio | Lens Studio 5.24.1, SPECS 27 Preview, driven through Lens Studio's built-in MCP server: compiles, loads live USGS data, zero runtime errors or warnings. Simulated hand pinches on **Strongest**, **30 days** and **24 h** produce the expected globe turn, highlight, epicentre ring, detail text, legend and window switch. The atmosphere scale read back from the running Lens matches the formula at 100 cm and, after a simulated drag, at 50 cm |
@@ -149,7 +151,7 @@ Design decisions and their reasons: [docs/DESIGN.md](docs/DESIGN.md).
 Requires Node 23.6 or newer (TypeScript runs natively; there are no packages to install).
 
 ```bash
-npm test          # 98 tests
+npm test          # 105 tests
 npm run preview   # builds, then serves http://localhost:8765/web-preview/
 ```
 

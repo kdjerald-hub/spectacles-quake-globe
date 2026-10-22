@@ -175,6 +175,27 @@ found. For the Lens:
   recording. Make it clearly readable.
 - On the alert card, the grey "Guidance: ..." line is hard to read at full view. Make it brighter.
 
+## Notes from the learner's own review of the video (2026-10-22)
+After watching the cut, the learner asked why the alert shows the whole planet, when what matters in
+that moment is my own area. On a 24 cm globe, 15 km is less than 0.3 mm: home and the epicentre sit on
+the same point, and the distance is only a number. The learner approved the agent's proposal: zoom
+into a map of my area, with distance rings and the epicentre at its true direction and distance; fade
+out quakes elsewhere; zoom back out after "I'm safe"; keep the globe for the rest of the time. The map
+details below are the agent's, within that proposal. For the Lens:
+- When the alert fires, the globe turns to the epicentre as now, then zooms into a map of my area:
+  home at the centre, distance rings (for this quake 10, 25 and 50 km), and the epicentre at its true
+  direction and distance from home, joined to home by a line labelled with the distance.
+- The map is flat, centred on home, north up, and every distance from home on it is true. It shows
+  the coastline, nearby place names and plate boundaries. Its size follows the quake: the epicentre
+  always fits inside the outer ring.
+- Quakes elsewhere in the world fade out during the alert; the map shows only what is near.
+- When "I'm safe" closes the alert, the map zooms back out to the globe.
+- Everything else stays: the alert card under it, the cover spot and its arrow, the details after
+  the shaking.
+
+Done criterion 3 now reads: pinching "Phone alert received" shows the alert card within a second,
+marks the epicenter on a map of my area, and shows its distance from my home.
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.

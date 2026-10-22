@@ -35,6 +35,21 @@
 * Names follow Natural Earth's English `NAME` field, which shows boundaries "according to their de
   facto status".
 
+## Map of your area: Natural Earth 1:10m (v5.1.2)
+
+* `data/localdetail.ts`, for the alert's map of your area (`core/localmap.ts`). The full 1:10m
+  coastline (about 411,000 points) is too big for a Lens, so it is clipped to three detail regions,
+  the earthquake country the project is for: Taiwan, Japan and the US West Coast. Simplified
+  (Douglas-Peucker, 0.002 degree, about 200 m): 257 polylines, 12,980 points. Elsewhere, and on
+  maps wider than 200 km in radius, the map uses the 1:50m coastline above.
+* Place names: every `ne_10m_populated_places_simple` place inside the regions, plus the major cities
+  (scalerank 0-3) everywhere else: 815 places, English names from `nameascii`.
+* Source files from https://github.com/nvkelso/natural-earth-vector, tag v5.1.2:
+  `geojson/ne_10m_coastline.geojson` (sha256 `6f75ae0e0de157b14946e2255eb1f5486d9a13819032e26d4610852d296788f6`)
+  and `geojson/ne_10m_populated_places_simple.geojson`
+  (sha256 `fd3fa867a320cbd5c5b6bb5bc550afeec2939fb2cef688e508007282a55ac42f`).
+* Same public-domain terms as above. Built by `tools/build_localmap.py`.
+
 ## Plate boundaries: PB2002 (Bird 2003)
 
 * `data/plates.ts`: the PB2002 plate boundary model, from the GeoJSON conversion at
