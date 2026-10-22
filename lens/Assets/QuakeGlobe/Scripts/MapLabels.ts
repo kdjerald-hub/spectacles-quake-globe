@@ -54,6 +54,8 @@ export class MapLabels {
   private homeId: string | null = null;
   private homeKey = "";
   private boosted: ReadonlySet<string> = new Set();
+  /** Global brightness factor: the alert's map zoom fades the whole label layer with the globe. */
+  private dim = 1;
 
   constructor(parent: SceneObject, font?: Font) {
     this.root = createEmptyObject("Map Labels", parent);
@@ -141,7 +143,7 @@ export class MapLabels {
       const visible = slot.current > 0.01 || slot.target > 0.01;
       if (slot.obj.enabled !== visible) slot.obj.enabled = visible;
       if (visible) {
-        const a = Math.max(0, slot.current);
+        const a = Math.max(0, slot.current) * this.dim;
         slot.text.textFill.color = new vec4(slot.color[0] * a, slot.color[1] * a, slot.color[2] * a, 1);
       } else if (slot.id !== "") {
         slot.id = ""; // slot fully faded: free it for the next label
@@ -151,5 +153,10 @@ export class MapLabels {
 
   setEnabled(enabled: boolean): void {
     if (this.root.enabled !== enabled) this.root.enabled = enabled;
+  }
+
+  /** Scale every label's brightness (0-1): the zoom into the alert map fades the layer as one. */
+  setDim(k: number): void {
+    this.dim = Math.max(0, Math.min(1, k));
   }
 }

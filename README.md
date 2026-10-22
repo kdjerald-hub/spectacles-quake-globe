@@ -32,13 +32,17 @@ Made for the Learn AR with SPECS hackathon:
 2. Pinch **Phone alert received**, the stand-in for a real phone alert. A chime plays.
    - The card leads with Drop, Cover, Hold On and "Stay where you are".
    - The dashboard steps aside. The only button left is **Shaking stopped**.
-3. The globe turns to the epicentre, rings it and labels its distance from home.
+3. The globe turns to the epicentre and zooms into a map of your area. On a 24 cm globe, 15 km is
+   less than 0.3 mm, so the map takes its place: home at the centre, distance rings, and the
+   epicentre at its true direction and distance ("15 km S"), with the coastline, nearby place names
+   and plate boundaries. Every distance from home on it is true. Quakes elsewhere fade out.
 4. If your cover spot is out of view, a small arrow at the edge of your view and a chime point to it.
 5. After you pinch **Shaking stopped**, the card shows:
    - USGS M7.4 (Taiwan CWA: ML 7.1)
    - the depth, the local time and the place
    - the nearest plate boundary
-6. Then pinch **Send to emergency contacts** (simulated), and **I'm safe**.
+6. Then pinch **Send to emergency contacts** (simulated), and **I'm safe**: the map zooms back out
+   to the globe.
 
 **The live globe**
 

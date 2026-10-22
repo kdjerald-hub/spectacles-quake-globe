@@ -53,6 +53,9 @@ import {
 } from "./LensRender";
 import { createText } from "./LensUi";
 import { AlertCard, ControlsCard, DetailsCard } from "./EmergencyUi";
+import { localMapFor } from "../Core/localmap";
+import type { LocalMap } from "../Core/localmap";
+import { LocalMapView } from "./LocalMapView";
 import {
   ALERT_SIMULATION_NOTE,
   DEFAULT_HOME,
@@ -86,6 +89,10 @@ export interface GlobeContext {
   setManipulationEnabled: (enabled: boolean) => void;
   /** Show or hide the main panel: it steps aside while an alert is open (video review 2026-10-21). */
   setPanelVisible: (visible: boolean) => void;
+  /** Show or hide the whole globe view while the alert's local map is up (learner's review 2026-10-22). */
+  setGlobeVisible: (visible: boolean) => void;
+  /** Fade the globe's materials toward black for the zoom's cross-fade (1 restores them). */
+  setGlobeFade: (k: number) => void;
 }
 
 type Mode = "normal" | "home" | "cover";
@@ -167,6 +174,23 @@ const PROBE_RANGE_CM = 600;
 /** A world-query hit counts as current for this long, so a pinch commits the surface just probed (s). */
 const PROBE_FRESH_S = 0.5;
 
+// The zoom into the map of your area (learner's review 2026-10-22). When the alert fires the globe
+// first turns the epicentre toward the viewer as before (TURN_S covers most of that slerp); then,
+// over ZOOM_S, the globe grows and fades out while the map grows from the epicentre's place and
+// fades in, so it reads as zooming in. "I'm safe" plays the same ramp backwards.
+const TURN_S = 0.9;
+const ZOOM_S = 0.8;
+/** The map starts at this share of its full size, growing to 1 as the zoom completes. */
+const MAP_START_SCALE = 0.3;
+/** The globe grows to this multiple while it fades out, selling the dive into the surface. */
+const GLOBE_GROW = 2.2;
+
+/** Smoothstep: eases both ends of the zoom so neither the globe nor the map pops. */
+function easeSmooth(u: number): number {
+  const t = Math.max(0, Math.min(1, u));
+  return t * t * (3 - 2 * t);
+}
+
 /**
  * The off-view arrow as a notched dart: a tip on local +X, two swept-back wings, and a notch cut
  * into the axis behind them. The old wide triangle read as pointing at whichever corner stood out
@@ -222,6 +246,19 @@ export class EmergencyOverlay {
   private arrowShown = false;
   private hintUntil = 0;
   private placed = false;
+
+  /** The map of your area, built once per alert (localMapFor), and its view in the globe's place. */
+  private mapView!: LocalMapView;
+  private localMap: LocalMap | null = null;
+  /**
+   * The zoom's stages: "turn" while the globe turns to the epicentre, "in" while the cross-fade
+   * runs, "map" while the map has fully replaced the globe (both alert stages), "out" while the
+   * reverse plays after "I'm safe". zoomU is the cross-fade's 0..1 position, so an alert closed
+   * mid-fade simply plays back from wherever it was.
+   */
+  private zoomPhase: "none" | "turn" | "in" | "map" | "out" = "none";
+  private turnT = 0;
+  private zoomU = 0;
 
   private controlsCard!: ControlsCard;
   private detailsCard!: DetailsCard;
@@ -389,6 +426,11 @@ export class EmergencyOverlay {
     const audioObj = createEmptyObject("Alert chime", this.ctx.root);
     this.audio = audioObj.createComponent("Component.AudioComponent") as AudioComponent;
     if (this.ctx.chime) this.audio.audioTrack = this.ctx.chime;
+
+    // The map of your area, hidden until an alert's zoom brings it up. A child of the globe's
+    // handle, so it keeps the globe's place through moves and resizes; its content is rebuilt
+    // for each alert from the confirmed home.
+    this.mapView = new LocalMapView(this.ctx.handle, base, this.ctx.font);
   }
 
   /** Subscribe to card buttons and pick targets. Call from OnStartEvent, like the panel. */
@@ -433,6 +475,54 @@ export class EmergencyOverlay {
     if (this.mode === "normal" && this.elapsed > this.hintUntil && this.hint.getSceneObject().enabled) {
       this.hint.getSceneObject().enabled = false;
     }
+    this.advanceZoom(dt);
+  }
+
+  /**
+   * Advance the zoom's clock. Only state moves here; the visuals (fades, scales, the billboard)
+   * are written in applyZoomVisuals from LateUpdate, after the per-frame pulse writes, so the
+   * cross-fade owns the colours it is fading.
+   */
+  private advanceZoom(dt: number): void {
+    switch (this.zoomPhase) {
+      case "turn":
+        this.turnT += dt;
+        if (this.turnT >= TURN_S) {
+          this.zoomPhase = "in";
+          this.mapView.setVisible(true);
+          // The map carries its own distance label ("15 km S"); the on-globe one retires.
+          this.epicenterLabel.getSceneObject().enabled = false;
+        }
+        break;
+      case "in":
+        this.zoomU = Math.min(1, this.zoomU + dt / ZOOM_S);
+        if (this.zoomU >= 1) {
+          this.zoomPhase = "map";
+          // Fully zoomed: the globe and its quakes stay hidden while the map is up, which is how
+          // quakes elsewhere fade out. Colours are restored while hidden so the fade cache is
+          // clean for the zoom back out.
+          this.ctx.setGlobeVisible(false);
+          this.ctx.setGlobeFade(1);
+        }
+        break;
+      case "out":
+        this.zoomU = Math.max(0, this.zoomU - dt / ZOOM_S);
+        if (this.zoomU <= 0) this.resetZoom();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** Snap the zoom off: map hidden, globe fully back, as before any alert. */
+  private resetZoom(): void {
+    if (this.zoomPhase === "none") return;
+    this.zoomPhase = "none";
+    this.zoomU = 0;
+    this.mapView.setVisible(false);
+    this.ctx.setGlobeVisible(true);
+    this.ctx.setGlobeFade(1);
+    this.ctx.content.getTransform().setLocalScale(new vec3(1, 1, 1));
   }
 
   /** Highest-priority rotation target: during an alert the globe faces the epicentre and holds. */
@@ -550,6 +640,30 @@ export class EmergencyOverlay {
     }
 
     this.updateArrow(cam, camPos);
+    this.applyZoomVisuals();
+  }
+
+  /**
+   * The zoom's visuals, written from LateUpdate so they win the frame over the pulse writes in
+   * UpdateEvent. The map is billboarded to the viewer (roll-free, like the atmosphere, so north
+   * stays up) and grows from the epicentre's place: at u=0 its epicentre point sits at the map
+   * plane's origin (where the epicentre faced the viewer on the turned globe), at u=1 home sits
+   * there, the map at full size. The globe meanwhile grows and fades out, and the reverse plays
+   * the same ramp backwards.
+   */
+  private applyZoomVisuals(): void {
+    if (this.zoomPhase === "none" || this.zoomPhase === "turn") return;
+    const u = easeSmooth(this.zoomU);
+    this.mapView.billboard(alignmentRotation(this.ctx.viewerDirectionInGlobe()));
+    const mapScale = MAP_START_SCALE + (1 - MAP_START_SCALE) * u;
+    const e = this.mapView.epicentreCm;
+    this.mapView.setTransition(mapScale, -e.x * mapScale * (1 - u), -e.y * mapScale * (1 - u));
+    this.mapView.applyFade(u, pulse(this.elapsed, EPICENTER_PULSE));
+    if (this.zoomPhase !== "map") {
+      const g = 1 + (GLOBE_GROW - 1) * u;
+      this.ctx.content.getTransform().setLocalScale(new vec3(g, g, g));
+      this.ctx.setGlobeFade(1 - u);
+    }
   }
 
   private poseCard(card: { root: SceneObject; anyHovered: () => boolean }, center: vec3, camPos: vec3, heightCm: number): void {
@@ -756,6 +870,7 @@ export class EmergencyOverlay {
 
   /** Fire the simulated alert and enter stage "during". */
   phoneAlert(): void {
+    this.resetZoom(); // a re-fired alert mid-zoom starts from the plain globe
     this.alertActive = true;
     this.stage = "during";
     this.sentToContacts = false;
@@ -768,6 +883,14 @@ export class EmergencyOverlay {
     this.showHomeMarker(home);
     this.showEpicenter();
     this.showLine(home);
+
+    // The map of your area, built once per alert from the confirmed home (learner's review
+    // 2026-10-22). The zoom brings it up after the globe has turned to the epicentre.
+    this.localMap = localMapFor(home, { lat: SIMULATED_QUAKE.lat, lon: SIMULATED_QUAKE.lon });
+    this.mapView.build(this.localMap, this.ctx.globeRadiusCm, DEPTH_CLASS_COLORS[depthClass(SIMULATED_QUAKE.depthKm)]);
+    this.zoomPhase = "turn";
+    this.turnT = 0;
+    this.zoomU = 0;
 
     const km = greatCircleKm(home.lat, home.lon, SIMULATED_QUAKE.lat, SIMULATED_QUAKE.lon);
     this.alertCard.setStage("during");
@@ -805,6 +928,14 @@ export class EmergencyOverlay {
   private closeAlert(): void {
     this.alertActive = false;
     this.alertFacing = null;
+    // Reverse the zoom: the map shrinks and fades while the globe returns. If the map never came
+    // up (the alert closed during the turn), there is nothing to play backwards.
+    if (this.zoomPhase === "map" || this.zoomPhase === "in") {
+      this.ctx.setGlobeVisible(true);
+      this.zoomPhase = "out";
+    } else if (this.zoomPhase === "turn") {
+      this.resetZoom();
+    }
     this.alertCard.setStage("during");
     this.alertCard.setVisible(false);
     this.epicenterLabel.getSceneObject().enabled = false;

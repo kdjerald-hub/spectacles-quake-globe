@@ -180,6 +180,10 @@ export class QuakeGlobeLens extends BaseScriptComponent {
   private renderedVersion = -1;
   private haloKey = "";
   private selectedId = "";
+  /** False while the alert's map of your area has replaced the globe (the zoom's "map" stage). */
+  private globeVisible = true;
+  /** Snapshot of every globe material's colour, taken when a zoom fade starts; null when at 1. */
+  private fadeCache: { pass: Pass; rgb: vec4 }[] | null = null;
   private selectionTarget: Quat | null = null;
   private current: Quat = { x: 0, y: 0, z: 0, w: 1 };
   private spinDeg = 200; // start with the Pacific facing the viewer
@@ -319,7 +323,69 @@ export class QuakeGlobeLens extends BaseScriptComponent {
         const show = visible && this.placed;
         if (this.panel.enabled !== show) this.panel.enabled = show;
       },
+      // The alert's zoom into the map of your area (learner's review 2026-10-22): the overlay
+      // drives the cross-fade, the Lens owns the globe's visuals.
+      setGlobeVisible: (visible: boolean) => this.setGlobeVisible(visible),
+      setGlobeFade: (k: number) => this.setGlobeFade(k),
     };
+  }
+
+  /**
+   * Show or hide the whole globe view (lines, quakes, atmosphere, map labels) while the alert's
+   * local map is up. The per-frame atmosphere and label updates pause while hidden, so nothing
+   * re-enables a part of the globe behind the map.
+   */
+  private setGlobeVisible(visible: boolean): void {
+    this.globeVisible = visible;
+    if (this.content.enabled !== visible) this.content.enabled = visible;
+    if (this.atmosphere.enabled !== visible) this.atmosphere.enabled = visible;
+    this.mapLabels.setEnabled(visible);
+  }
+
+  /**
+   * Fade every globe material toward black (the additive display's transparent) for the zoom's
+   * cross-fade. Call with k < 1 each frame of the fade from LateUpdate (after the per-frame pulse
+   * writes, so the fade wins the frame), and with 1 to restore the snapshot when the fade ends.
+   * The map-label layer fades through its own dim factor, since it re-writes colours every frame.
+   */
+  private setGlobeFade(k: number): void {
+    if (k >= 1) {
+      if (this.fadeCache !== null) {
+        for (const e of this.fadeCache) e.pass.baseColor = e.rgb;
+        this.fadeCache = null;
+      }
+      this.mapLabels.setDim(1);
+      return;
+    }
+    if (this.fadeCache === null) {
+      const cache: { pass: Pass; rgb: vec4 }[] = [];
+      const materials: Material[] = [];
+      const visit = (obj: SceneObject): void => {
+        const visuals = obj.getComponents("Component.RenderMeshVisual");
+        for (const v of visuals) {
+          const m = v.mainMaterial;
+          if (isNull(m)) continue;
+          let seen = false;
+          for (const known of materials) {
+            if (known.isSame(m)) {
+              seen = true;
+              break;
+            }
+          }
+          if (seen) continue;
+          materials.push(m);
+          cache.push({ pass: m.mainPass, rgb: m.mainPass.baseColor });
+        }
+        for (let i = 0; i < obj.getChildrenCount(); i++) visit(obj.getChild(i));
+      };
+      visit(this.content);
+      visit(this.atmosphere);
+      this.fadeCache = cache;
+    }
+    for (const e of this.fadeCache) {
+      e.pass.baseColor = new vec4(e.rgb.x * k, e.rgb.y * k, e.rgb.z * k, e.rgb.w);
+    }
+    this.mapLabels.setDim(k);
   }
 
   private buildPanel(): void {
@@ -714,7 +780,7 @@ export class QuakeGlobeLens extends BaseScriptComponent {
    * than the globe's radius, and unscaled rings would slide inside the edge (silhouetteScale).
    */
   private updateAtmosphere(): void {
-    if (!this.placed) return;
+    if (!this.placed || !this.globeVisible) return;
     const toViewer = this.viewerDirectionInGlobe();
     const distance = Math.hypot(toViewer.x, toViewer.y, toViewer.z);
     const s = silhouetteScale(this.globeRadiusCm * this.handle.getTransform().getWorldScale().y, distance);
@@ -737,6 +803,8 @@ export class QuakeGlobeLens extends BaseScriptComponent {
   private updateLabels(dt: number): void {
     this.mapLabels.ease(dt);
     this.sinceLabelLayout += dt;
+    // While the alert's map has replaced the globe there is nothing to lay labels out on.
+    if (!this.globeVisible) return;
     if (this.sinceLabelLayout < LABEL_RELAYOUT_INTERVAL_S) return;
     // During an alert the epicentre distance label floats over the globe and the epicentre ring
     // and home marker sit on it; the map names keep clear of all three boxes (second-cut check and
