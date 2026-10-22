@@ -205,6 +205,21 @@ they find. For the Lens:
 - The line from home to the epicentre runs alongside the coast and reads as part of it. Make it a
   warm dashed line, in the colour of its "15 km S" label.
 
+## Notes from the review of the narrated cut (2026-10-22)
+An AI-assisted review of the narrated cut, by four reviewers; the learner asked the agents to fix
+what they find. For the Lens:
+- While the globe grows and fades into the map, it passes in front of the alert card and cuts pieces
+  out of its letters ("Drop, Cover, Hold On", "Protect your head and neck"), in the first second and
+  a half of the alert, when that line matters most. On the way back after "I'm safe" it cuts into the
+  dashboard's text the same way. No letter of the card or the dashboard may be hidden at any moment
+  of the zoom, in or out.
+- The map's lines run through its labels: the coastline through "10 km" and "25 km", the 25 km ring
+  through "Home · Hualien" and beside "15 km S". Place every label where no line crosses it; where
+  one still must, leave a gap in the line under the label.
+- The coastline runs along the line from home to the epicentre, and on the additive display the warm
+  dashes add into the white coast and vanish. Leave the coastline out within a small margin of that
+  line, so the dashes read; the land tint still shows where the coast is.
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.
