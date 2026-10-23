@@ -1,10 +1,10 @@
 # Live Quake Globe
 
-When the earthquake alert hits your phone, this Lens for Snap Spectacles (SPECS) shows what the phone
-can't. Drop, Cover, Hold On comes first. Your cover spot is marked in your room. Once the quake's
-location is known, the live globe in front of you zooms into a map of your area: where it struck,
-and how far that is from home. After the shaking it shows what happened and which plates met, and
-one pinch tells your emergency contacts.
+When the earthquake alert hits your phone, this Lens for Snap Spectacles (SPECS) puts it in your
+room, with nothing to hold. Drop, Cover, Hold On comes first, and your cover spot is marked beside
+you. Once the quake's location is known, the live globe in front of you zooms into a map of your
+area: where it struck, and how far that is from home. After the shaking it shows what happened and
+which plates met, and one pinch tells your emergency contacts.
 
 Made for the Learn AR with SPECS hackathon:
 - planned with Snap's plan-lens skill pack;
@@ -70,8 +70,9 @@ Made for the Learn AR with SPECS hackathon:
 ## How it was planned and built
 
 - **Planned** with the plan-lens skill pack. The brief is
-  [lens/devpost/design-brief.md](lens/devpost/design-brief.md). It now also holds the design notes
-  added after each review. The first notes came from an AI-assisted review that the learner
+  [lens/devpost/design-brief.md](lens/devpost/design-brief.md). The learner answered the interview
+  in Chinese; the brief is its English write-up. It now also holds the design notes added after
+  each review. The first notes came from an AI-assisted review that the learner
   approved.
 - **Built** by Claude Code with Snap's CLAD plugin, in headless passes that drive Lens Studio
   through its MCP server:
@@ -107,6 +108,8 @@ Made for the Learn AR with SPECS hackathon:
 - **Video:** recorded in the Lens Studio preview while the two CLAD-written LEAF drivers pressed
   the Lens's real buttons and the Lens Studio MCP moved the camera. The narration is a synthetic
   voice (Kokoro-82M, Apache-2.0, run locally), in the third person; every caption is what it says.
+  The whole-window shot of Lens Studio was recorded before pass 12, which changed nothing in the
+  idle view.
 
 ## How it is built
 
