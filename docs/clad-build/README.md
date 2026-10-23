@@ -21,9 +21,10 @@ Each pass is one headless Claude Code session with Snap's ls-clad plugin, workin
 | [11](pass11.md) | The two demo-video drivers, written fresh from a shot list | 47 | 7 | specs-leaf-write-scenarios, specs-leaf-run-in-preview |
 | [12](pass12.md) | The narrated cut's review: no text hidden during the zoom, labels clear of lines, the dashed line readable | 120 | 30 | lens-studio-router, lens-studio-field-notes, editor-api, specs-leaf-run-in-preview, preview-inspection, lens-log-analysis |
 | [12b](pass12b.md) | Finish pass 12 after a usage limit | 86 | 12 | lens-studio-router, specs-leaf-run-in-preview, lens-log-analysis, preview-inspection, editor-api |
+| [13](pass13.md) | The final cut's review: ring labels on their rings, the cover-spot hint clear of the globe | 106 | 33 | lens-studio-router, specs-leaf-run-in-preview |
 
-In all: 1605 turns, 7 h 37 min. The total is summed from each pass's exact duration and then rounded to the minute, like each pass; it is not a sum of the rounded minutes above.
+In all: 1711 turns, 8 h 10 min. The total is summed from each pass's exact duration and then rounded to the minute, like each pass; it is not a sum of the rounded minutes above.
 
-Not in that total: the stopped first try at pass 9b, 29 turns and 4 minutes, with 10 Lens Studio MCP calls, 7 file reads and 0 edits (see its note). The video's build replay shows the other 16 passes and counts only their calls.
+Not in that total: the stopped first try at pass 9b, 29 turns and 4 minutes, with 10 Lens Studio MCP calls, 7 file reads and 0 edits (see its note). The video's build replay shows the other 17 passes and counts only their calls.
 
 Turns and minutes are Claude Code's own count. By the logs' clock, pass 3 took about 6 hours: it ran overnight, with long pauses between steps that Claude Code's count leaves out.

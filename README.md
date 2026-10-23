@@ -94,7 +94,10 @@ Made for the Learn AR with SPECS hackathon:
     from a shot list;
   - the review of the narrated cut: the zoom never hides the alert card's or the dashboard's
     text, map labels keep clear of lines, and the coastline gives way to the dashed line
-    (finished after a usage limit).
+    (finished after a usage limit);
+  - the review of the final cut: each ring label sits on its own ring, all along one direction
+    from home, and the cover-spot hint keeps clear of the globe and the dashboard while the view
+    sweeps down to the floor.
 
   Each pass's prompt and report are in [docs/clad-build/](docs/clad-build/).
 - **Tested** with LEAF: one scenario for each done criterion, plus the home marker. They run in the
