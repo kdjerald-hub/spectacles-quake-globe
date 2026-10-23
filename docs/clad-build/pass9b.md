@@ -30,6 +30,10 @@ lens-studio-router, specs-leaf-run-in-preview, lens-log-analysis, preview-inspec
 
 map_detail: succeeded/succeeded, quake_details: succeeded/succeeded, alert: succeeded/succeeded, cover_spot: succeeded/succeeded, emergency_contacts: succeeded/succeeded, home_marker: succeeded/succeeded
 
+## Written outside the repo
+
+Besides the project, this pass wrote: Claude Code's own memory note lens-preview-driving.md. It changed no file in the repo outside lens/.
+
 ## The agent's final report
 
 The pass is finished: the build is clean, all six scenarios passed twice (INFO and DEBUG rounds, LEAF's own log lines confirmed for every run), the three screenshots look right, and the project is saved. **I changed no code** — nothing failed and no screenshot showed a real problem.

@@ -47,6 +47,10 @@ map_detail: succeeded/succeeded/succeeded/succeeded, quake_details: succeeded/su
 
 One Read of the Lens Studio log file, outside the project folder, was denied by the headless permissions; the agent read the log through the MCP instead. It re-ran four of the DEBUG runs to read their full logs, so this pass has 22 LEAF runs, all passed.
 
+## Written outside the repo
+
+Besides the project, this pass wrote: Claude Code's own memory note lens-preview-driving.md. It changed no file in the repo outside lens/.
+
 ## The agent's final report
 
 Done. Both design-brief fixes are in, all six LEAF scenarios pass three times over, and the screenshots confirm both behaviours. Details:

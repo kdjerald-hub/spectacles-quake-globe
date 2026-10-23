@@ -29,6 +29,10 @@ quake_details: failed
 
 This pass handed its LEAF runs to a background agent, which the headless session ended before it reported. Passes 1b and 1c ran the tests in the foreground.
 
+## Written outside the repo
+
+Besides the project, this pass wrote: a scratch file in its session's temp folder (make_chime.py); a scratch file in its session's temp folder (scene.py). It changed no file in the repo outside lens/.
+
 ## The agent's final report
 
 Here's where things stand while the LEAF tests run in the background.

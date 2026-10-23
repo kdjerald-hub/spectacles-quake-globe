@@ -35,6 +35,10 @@ map_detail: succeeded/succeeded/succeeded, quake_details: succeeded/succeeded/su
 
 The first ten LEAF calls in this pass timed out at the MCP transport after 60 s while LEAF went on running them; their verdicts are LEAF's own PASSED and FAILED lines in the Lens Studio log, matched to each call (pass8_leaf_verdicts.json). The last eleven returned their status directly, and the log agrees. One alert call reached Lens Studio two minutes late, and its run was cancelled when the next call reset the scene, so it has no verdict. The log lines themselves are in pass8_leaf_log_excerpt.txt. The agent's report mentions one failed alert run; the log shows two, the second while it was diagnosing its new ring check, before the fix.
 
+## Written outside the repo
+
+Besides the project, this pass wrote: Claude Code's own memory note lens-preview-driving.md. It changed no file in the repo outside lens/.
+
 ## The agent's final report
 
 All four committee notes are applied, verified in the preview, and all six scenarios pass twice over plus a DEBUG pass with no probe lines.

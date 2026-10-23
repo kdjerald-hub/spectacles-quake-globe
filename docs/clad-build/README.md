@@ -27,4 +27,6 @@ In all: 1711 turns, 8 h 10 min. The total is summed from each pass's exact durat
 
 Not in that total: the stopped first try at pass 9b, 29 turns and 4 minutes, with 10 Lens Studio MCP calls, 7 file reads and 0 edits (see its note). The video's build replay shows the other 17 passes and counts only their calls.
 
+Outside the repo, passes 1, 6, 8, 9b, 12b, 13 also wrote Claude Code's own memory notes or scratch files (listed on each pass's page); the replay's "Edits and writes" counter includes them. No pass changed a file in the repo outside lens/.
+
 Turns and minutes are Claude Code's own count. By the logs' clock, pass 3 took about 6 hours: it ran overnight, with long pauses between steps that Claude Code's count leaves out.

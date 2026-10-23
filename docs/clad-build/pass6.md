@@ -37,6 +37,10 @@ none
 
 map_detail: succeeded/succeeded/succeeded/succeeded, quake_details: succeeded/succeeded/succeeded/succeeded, alert: succeeded/succeeded/succeeded/succeeded, cover_spot: succeeded/succeeded/succeeded, emergency_contacts: succeeded/succeeded/succeeded, home_marker: succeeded/succeeded/succeeded
 
+## Written outside the repo
+
+Besides the project, this pass wrote: Claude Code's own memory note MEMORY.md; Claude Code's own memory note lens-preview-driving.md. It changed no file in the repo outside lens/.
+
 ## The agent's final report
 
 All six video-review notes are applied, verified with screenshots in both alert stages, and all six LEAF scenarios pass — twice in a row and once more each at DEBUG, with zero "setTarget: probe" lines.

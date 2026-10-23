@@ -45,6 +45,10 @@ lens-studio-router, specs-leaf-run-in-preview, lens-log-analysis, preview-inspec
 
 map_detail: succeeded/succeeded/succeeded, quake_details: succeeded/succeeded/succeeded, alert: succeeded/succeeded/succeeded, cover_spot: succeeded/succeeded/succeeded, emergency_contacts: succeeded/succeeded/succeeded, home_marker: succeeded/succeeded/succeeded
 
+## Written outside the repo
+
+Besides the project, this pass wrote: Claude Code's own memory note lens-preview-driving.md. It changed no file in the repo outside lens/.
+
 ## The agent's final report
 
 Pass 12 is finished: all 18 LEAF runs passed (6 + 6 + 6 DEBUG), the build is clean, the zoom screenshots confirm no letter is ever covered, and nothing temporary is left in the code — the zoom timing stands at TURN_S 0.9 / ZOOM_S 0.8.
