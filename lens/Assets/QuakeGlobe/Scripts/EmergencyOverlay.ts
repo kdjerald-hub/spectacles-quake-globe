@@ -99,6 +99,20 @@ export interface GlobeContext {
    * the dashboard on the way back out (narrated-cut review 2026-10-22).
    */
   dashboardTopWorld: () => vec3 | null;
+  /**
+   * The dashboard's whole backplate as a world rectangle, or null while the panel is hidden. The
+   * cover-spot hint's planner keeps the hint clear of it (final-cut review 2026-10-23).
+   */
+  dashboardPlateWorld: () => HintObstacleRect | null;
+}
+
+/** A world rectangle (here: the dashboard's backplate) the cover-spot hint keeps clear of. */
+export interface HintObstacleRect {
+  pos: vec3;
+  rot: quat;
+  halfWidthCm: number;
+  topCm: number;
+  bottomCm: number;
 }
 
 type Mode = "normal" | "home" | "cover";
@@ -164,8 +178,29 @@ const EPICENTER_LABEL_GAP_CM = 1.2;
 /** Clear space the map labels keep around the epicentre label (degrees of view angle). */
 const EPICENTER_LABEL_MARGIN_DEG = 0.4;
 /** The cover-spot placement hint follows the line of sight: this far ahead and above centre (cm). */
-const HINT_AHEAD_CM = 70;
+export const HINT_AHEAD_CM = 70;
 const HINT_RAISE_CM = 9;
+/**
+ * The cover-spot hint's text box as half-extents (cm): the width it was created with and two
+ * wrapped lines at COVER_HINT_SIZE. The planner keeps this whole box, plus HINT_CLEAR_CM, clear
+ * of the globe's silhouette and the dashboard's backplate (final-cut review 2026-10-23).
+ */
+export const HINT_HALF_W_CM = 17;
+export const HINT_HALF_H_CM = 1.7;
+const HINT_CLEAR_CM = 2;
+/**
+ * A planned hint spot counts as "in view" while its centre's offset from the view centre stays
+ * within this (cm in the plane at HINT_AHEAD_CM; ~17 degrees, inside the preview's ~±18).
+ */
+export const HINT_VIEW_HALF_CM = 22;
+/** The hint's box is fully outside the preview's view past this (its edge, cm at HINT_AHEAD_CM);
+ * only there may it cross the view in one step without being seen. */
+const HINT_OFFSCREEN_CM = 25;
+/** Easing rates (per second): the hint's glide to a new clear spot, and its cross-fade when the
+ * clear side flips (above the globe <-> below the dashboard) and a glide would cross them. */
+const HINT_GLIDE_RATE = 10;
+const HINT_FADE_RATE = 12;
+const HINT_COLOR: [number, number, number] = [0.85, 0.92, 1.0];
 /** Default hint text size (matches the panel's body lines). */
 const HINT_SIZE = 36;
 /**
@@ -230,6 +265,102 @@ function buildArrowMesh(size: number): TriangleMesh {
   return { positions, normals, indices: [0, 1, 2, 0, 2, 3] };
 }
 
+/** What the cover-hint planner decided for one camera pose (cm in the plane at HINT_AHEAD_CM). */
+export interface CoverHintPlan {
+  /** The chosen vertical offset of the hint's centre from the view centre (x stays 0). */
+  targetY: number;
+  /** Merged vertical bands of the hint centre's y that would overlap the globe or the dashboard. */
+  blocked: [number, number][];
+}
+
+/**
+ * Where the cover-spot hint should rest for a camera pose (final-cut review 2026-10-23): in the
+ * camera's view plane at HINT_AHEAD_CM, x = 0 and y = the default HINT_RAISE_CM whenever that spot
+ * is clear of the globe's silhouette and the dashboard's backplate; otherwise the nearest clear
+ * spot just past whichever of them block it (above the globe while the view rests on it, below the
+ * dashboard while the view sweeps across it), preferring a spot still inside the view, then the
+ * one nearest the default. The blocked bands are conservative: the globe's silhouette becomes its
+ * bounding square in the plane, the plate its corners' bounding box, and both are grown by the
+ * hint's half box plus HINT_CLEAR_CM, so a y outside every band means the whole text box clears
+ * both obstacles. A pure function of its inputs, so the cover_spot LEAF scenario can sweep camera
+ * pitches through it and judge the answers with its own projection math.
+ */
+export function coverHintPlanFor(
+  camPos: vec3,
+  right: vec3,
+  up: vec3,
+  lookDir: vec3,
+  globeCentre: vec3,
+  globeRadiusCm: number,
+  plate: HintObstacleRect | null,
+): CoverHintPlan {
+  const grow = HINT_HALF_H_CM + HINT_CLEAR_CM;
+  const growX = HINT_HALF_W_CM + HINT_CLEAR_CM;
+  const bands: [number, number][] = [];
+  // The globe's silhouette: a disc about the centre's projection, radius from the tangent cone
+  // (tan(asin(R / distance))), widened by 1 / cos^2 of the off-axis angle so the projected ellipse
+  // stays inside it; skipped when the globe is behind the eyes or the eyes are inside it.
+  {
+    const v = globeCentre.sub(camPos);
+    const depth = v.dot(lookDir);
+    const dist = v.length;
+    if (depth > 1 && dist > globeRadiusCm + 1) {
+      const gx = (v.dot(right) / depth) * HINT_AHEAD_CM;
+      const gy = (v.dot(up) / depth) * HINT_AHEAD_CM;
+      const offAxis = (dist / depth) * (dist / depth);
+      const rg = (HINT_AHEAD_CM * globeRadiusCm * offAxis) / Math.sqrt(Math.max(1, dist * dist - globeRadiusCm * globeRadiusCm));
+      if (gx - rg < growX && gx + rg > -growX) bands.push([gy - rg - grow, gy + rg + grow]);
+    }
+  }
+  // The dashboard's backplate, projected corner by corner (like the arrow's card rectangle).
+  if (plate !== null) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    let usable = true;
+    for (const c of [
+      new vec3(-plate.halfWidthCm, plate.topCm, 0),
+      new vec3(plate.halfWidthCm, plate.topCm, 0),
+      new vec3(-plate.halfWidthCm, plate.bottomCm, 0),
+      new vec3(plate.halfWidthCm, plate.bottomCm, 0),
+    ]) {
+      const v = plate.pos.add(plate.rot.multiplyVec3(c)).sub(camPos);
+      const depth = v.dot(lookDir);
+      if (depth < 1) {
+        usable = false; // a corner at or behind the eyes: no meaningful projection
+        break;
+      }
+      const px = (v.dot(right) / depth) * HINT_AHEAD_CM;
+      const py = (v.dot(up) / depth) * HINT_AHEAD_CM;
+      minX = Math.min(minX, px);
+      maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py);
+      maxY = Math.max(maxY, py);
+    }
+    if (usable && minX < growX && maxX > -growX) bands.push([minY - grow, maxY + grow]);
+  }
+  // Merge the bands, find the one holding the default spot, and pick the better of its edges.
+  bands.sort((a, b) => a[0] - b[0]);
+  const blocked: [number, number][] = [];
+  for (const b of bands) {
+    const last = blocked.length > 0 ? blocked[blocked.length - 1] : null;
+    if (last !== null && b[0] <= last[1]) last[1] = Math.max(last[1], b[1]);
+    else blocked.push([b[0], b[1]]);
+  }
+  let targetY = HINT_RAISE_CM;
+  for (const [lo, hi] of blocked) {
+    if (targetY > lo && targetY < hi) {
+      const belowIn = Math.abs(lo) <= HINT_VIEW_HALF_CM;
+      const aboveIn = Math.abs(hi) <= HINT_VIEW_HALF_CM;
+      if (aboveIn !== belowIn) targetY = aboveIn ? hi : lo;
+      else targetY = Math.abs(hi - HINT_RAISE_CM) <= Math.abs(lo - HINT_RAISE_CM) ? hi : lo;
+      break; // the merged bands are disjoint and separated, so an edge lies in no other band
+    }
+  }
+  return { targetY, blocked };
+}
+
 export class EmergencyOverlay {
   private readonly ctx: GlobeContext;
   /**
@@ -261,6 +392,10 @@ export class EmergencyOverlay {
   private alertStartElapsed = -999;
   private arrowShown = false;
   private hintUntil = 0;
+  /** The cover-spot hint's smoothed vertical offset in its view plane (cm at HINT_AHEAD_CM). */
+  private hintY = HINT_RAISE_CM;
+  /** The cover-spot hint's cross-fade (1 = full brightness; it dips to cross a blocked band). */
+  private hintFade = 1;
   private placed = false;
 
   /** The map of your area, built once per alert (localMapFor), and its view in the globe's place. */
@@ -628,15 +763,10 @@ export class EmergencyOverlay {
     if (this.hint.getSceneObject().enabled) {
       const ht = this.hint.getSceneObject().getTransform();
       if (this.mode === "cover") {
-        // While setting the cover spot the hint follows the line of sight (video review
-        // 2026-10-21): slightly above the view centre so it stays readable when the user looks
-        // down at a table or the floor, while leaving the centre clear for aiming the pinch.
-        const lookDir = cam.forward.uniformScale(-1).normalize();
-        const hintPos = camPos.add(lookDir.uniformScale(HINT_AHEAD_CM)).add(cam.up.uniformScale(HINT_RAISE_CM));
-        ht.setWorldPosition(hintPos);
-        ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
+        this.poseCoverHint(cam, camPos, ht);
       } else {
         // Other hints float just above the globe, where the user is already looking.
+        this.setHintFade(1);
         const hintPos = globeCenter.add(new vec3(0, silhouetteR + 3, 0));
         ht.setWorldPosition(hintPos);
         ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
@@ -724,6 +854,69 @@ export class EmergencyOverlay {
     const t = card.root.getTransform();
     t.setWorldPosition(pos);
     t.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(pos)))));
+  }
+
+  /** The cover-hint plan for a camera pose, fed with the live globe and dashboard state. */
+  coverHintPlan(camPos: vec3, right: vec3, up: vec3, lookDir: vec3): CoverHintPlan {
+    const handleT = this.ctx.handle.getTransform();
+    return coverHintPlanFor(
+      camPos,
+      right,
+      up,
+      lookDir,
+      handleT.getWorldPosition(),
+      this.ctx.globeRadiusCm * handleT.getWorldScale().y,
+      this.ctx.dashboardPlateWorld(),
+    );
+  }
+
+  /**
+   * Pose the cover-spot hint (final-cut review 2026-10-23). It follows the line of sight at
+   * HINT_AHEAD_CM as before, but its height in the view is planned every frame by coverHintPlanFor:
+   * the default HINT_RAISE_CM whenever that spot is clear of the globe's silhouette and the
+   * dashboard's plate, else the nearest clear spot past them - just above the globe while the view
+   * rests on it, just below the dashboard while the view sweeps across it. The offset glides
+   * (exponential ease, then clamped out of the blocked bands so the easing lag can never leave the
+   * text over an obstacle) rather than popping. When the clear side flips - sweeping down past the
+   * dashboard moves it from above the globe to below the dashboard - a glide would cross the
+   * blocked bands, so the hint instead cross-fades: out where it is, across while invisible, back
+   * in at the new spot; when its box is already fully outside the preview's view it crosses in one
+   * unseen step.
+   */
+  private poseCoverHint(cam: Transform, camPos: vec3, ht: Transform): void {
+    const lookDir = cam.forward.uniformScale(-1).normalize();
+    const plan = this.coverHintPlan(camPos, cam.right, cam.up, lookDir);
+    const dt = getDeltaTime();
+    let y = this.hintY;
+    const crosses = plan.blocked.some(([lo, hi]) => (y <= lo && plan.targetY >= hi) || (plan.targetY <= lo && y >= hi));
+    if (crosses) {
+      if (Math.abs(y) - HINT_HALF_H_CM > HINT_OFFSCREEN_CM) {
+        y = plan.targetY; // already out of view: cross unseen, then ease back in
+        this.hintFade = 0;
+      } else {
+        this.hintFade += (0 - this.hintFade) * (1 - Math.exp(-dt * HINT_FADE_RATE));
+        if (this.hintFade <= 0.02) {
+          this.hintFade = 0;
+          y = plan.targetY;
+        }
+      }
+    } else {
+      y += (plan.targetY - y) * (1 - Math.exp(-dt * HINT_GLIDE_RATE));
+      for (const [lo, hi] of plan.blocked) {
+        if (y > lo && y < hi) y = plan.targetY >= hi ? hi : plan.targetY <= lo ? lo : y - lo <= hi - y ? lo : hi;
+      }
+      this.hintFade += (1 - this.hintFade) * (1 - Math.exp(-dt * HINT_FADE_RATE));
+    }
+    this.hintY = y;
+    this.setHintFade(this.hintFade);
+    const hintPos = camPos.add(lookDir.uniformScale(HINT_AHEAD_CM)).add(cam.up.uniformScale(y));
+    ht.setWorldPosition(hintPos);
+    ht.setWorldRotation(toLensQuat(alignmentRotation(fromLensVec(camPos.sub(hintPos)))));
+  }
+
+  /** Scale the hint's colour toward black (the additive display's transparent) for its cross-fade. */
+  private setHintFade(k: number): void {
+    this.hint.textFill.color = new vec4(HINT_COLOR[0] * k, HINT_COLOR[1] * k, HINT_COLOR[2] * k, 1);
   }
 
   /**
@@ -1066,6 +1259,11 @@ export class EmergencyOverlay {
     this.coverSpotNormal = null;
     this.placeCoverSpot();
     this.placementPlane.enabled = true;
+    // Seed the hint at the clear spot for the current pose (usually just above the globe, which
+    // the view rests on right after "Set cover spot"), so it appears there instead of sliding.
+    const look0 = cam.forward.uniformScale(-1).normalize();
+    this.hintY = this.coverHintPlan(camPos, cam.right, cam.up, look0).targetY;
+    this.hintFade = 1;
     this.showHint("Point at a table or the floor and pinch to place your cover spot", 0, COVER_HINT_SIZE);
   }
 

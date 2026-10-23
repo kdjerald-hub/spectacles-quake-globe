@@ -28,10 +28,13 @@
 //     must stay short of both at every sampled frame, and both cross-fade windows must actually
 //     have been sampled. At the old GLOBE_GROW of 2.2 the disc overshot the card by ~7 degrees,
 //     so this check would have caught that bug on its first frame.
-//   - While the map is up, no drawn coastline, plate line or ring crosses any map label's box
-//     (the drawn geometry comes from LocalMapView.lastBuildDebug, which holds the final cut
-//     centre lines), and no drawn coastline comes within the published clear margin of the
-//     home-epicentre segment (so the warm dashes never add into the white coast).
+//   - While the map is up, no drawn line (coastline, plate line, ring or dash) crosses any map
+//     label's box (the drawn geometry comes from LocalMapView.lastBuildDebug, which holds the
+//     final cut centre lines), and no drawn coastline comes within the published clear margin of
+//     the home-epicentre segment (so the warm dashes never add into the white coast).
+//
+// Added after the final-cut review (2026-10-23): each ring label's box is centred on its own ring
+// line, and all ring labels lie on one ray from home (their centres' angles from home agree).
 
 import { Scenario } from "Leaf.lspkg/Scenarios/scenario/Scenario";
 import { ScenarioConfig } from "Leaf.lspkg/Scenarios/scenario/ScenarioConfig";
@@ -387,7 +390,6 @@ export class AlertScenario extends Scenario {
     const crossings: string[] = [];
     for (const label of dbg!.labels) {
       for (const line of dbg!.lines) {
-        if (line.kind === "dash") continue; // the dashes are the line labels already keep clear of
         if (polylinesCrossBox(line.polylines, label.box, line.halfWidthCm)) {
           crossings.push(`${line.kind} x "${label.text}"`);
         }
@@ -395,8 +397,40 @@ export class AlertScenario extends Scenario {
     }
     expect(
       crossings.length === 0,
-      `No drawn coastline, plate line or ring should cross a map label's box (crossing: ${crossings.length > 0 ? crossings.join("; ") : "none"})`,
+      `No drawn line (coastline, plate, ring or dash) should cross a map label's box (crossing: ${crossings.length > 0 ? crossings.join("; ") : "none"})`,
     ).toBe(true);
+
+    // Ring labels on their rings, all on one ray from home (final-cut review 2026-10-23): each
+    // ring label's box centre sits on its own ring line (the matching ring's radius at the map's
+    // scale, within 0.05 cm), and all the ring labels lie at the same direction from home (their
+    // centres' angles agree within half a degree). The gap cut in each ring under its label is
+    // covered by the no-crossing check above, which includes the rings.
+    const ringLabelBoxes = dbg!.labels.filter((l) => l.name === "Map ring label");
+    expect(ringLabelBoxes.length === 3, `Three ring labels should be drawn (got ${ringLabelBoxes.length})`).toBe(true);
+    const cmPerKm = dbg!.radiusCm / radiusKm;
+    const rayDegs: number[] = [];
+    for (const l of ringLabelBoxes) {
+      const cx = (l.box.x0 + l.box.x1) / 2;
+      const cy = (l.box.y0 + l.box.y1) / 2;
+      const ringKm = ringsKm(radiusKm).find((k) => ringLabel(k) === l.text);
+      expect(ringKm !== undefined, `Ring label "${l.text}" should name one of the rings`).toBe(true);
+      const wantCm = ringKm! * cmPerKm;
+      const gotCm = Math.hypot(cx, cy);
+      expect(
+        Math.abs(gotCm - wantCm) <= 0.05,
+        `Ring label "${l.text}" should be centred on its ring (centre ${gotCm.toFixed(2)} cm from home, ring at ${wantCm.toFixed(2)} cm)`,
+      ).toBe(true);
+      rayDegs.push(Math.atan2(cy, cx) * DEG);
+    }
+    let raySpread = 0;
+    for (let i = 0; i < rayDegs.length; i++) {
+      for (let j = i + 1; j < rayDegs.length; j++) raySpread = Math.max(raySpread, angleDiffDeg(rayDegs[i], rayDegs[j]));
+    }
+    print(
+      `alert map: ring labels on one ray at ${rayDegs.length > 0 ? rayDegs[0].toFixed(1) : "?"} deg from east ` +
+        `(spread ${raySpread.toFixed(2)} deg)`,
+    );
+    expect(raySpread <= 0.5, `All ring labels should lie on one ray from home (spread ${raySpread.toFixed(2)} deg)`).toBe(true);
 
     // No drawn coastline comes within the clear margin of the home-epicentre segment, so the warm
     // dashes never add into the white coast on the additive display (narrated-cut review).

@@ -21,8 +21,9 @@
 // fits nowhere is dropped (the rings and markers matter more than a sixth town).
 //
 // Lines and labels keep out of each other's way (narrated-cut review 2026-10-22): every label
-// first looks for a spot where no coastline, plate line or ring crosses its box (ring labels walk
-// around their ring; the floating labels fall through their candidates), and wherever a line still
+// first looks for a spot where no coastline, plate line or ring crosses its box (the ring labels
+// sit on one ray from home, each centred on its own ring, per the final-cut review 2026-10-23;
+// the floating labels fall through their candidates), and wherever a line still
 // crosses a label's final box, a gap is cut in the line under the box with a small margin. The
 // rings are drawn as polylines rather than annulus meshes so they can carry such gaps. The
 // coastline is also left out within a margin of the home-epicentre segment, so the warm dashes
@@ -93,8 +94,13 @@ const PLACE_SIZE = 36;
 const EM_CM = 1 / 43.886;
 /** Minimum clear space between any two label boxes, and around markers and the line (cm). */
 const LABEL_MARGIN_CM = 0.25;
-/** Candidate directions around a ring for its label, degrees from east; the top is tried first. */
-const RING_LABEL_ANGLES = [90, 110, 70, 130, 50, 150, 30, 170, 10, 190, 350, 210, 330, 230, 310, 250, 290, 270];
+/**
+ * Candidate directions (degrees from east) for the single ray from home that carries every ring
+ * label (final-cut review 2026-10-23). East and west first (the open sides of a coastal map read
+ * best), then the diagonals and finer steps; straight up and down come last, because "N" owns the
+ * top of the map and the demo's home-epicentre line runs south.
+ */
+const RING_LABEL_RAY_DEGREES = [0, 180, 45, 135, 315, 225, 22.5, 157.5, 337.5, 202.5, 67.5, 112.5, 292.5, 247.5, 90, 270];
 /** Segments per full circle when a ring is drawn (as a polyline, so a label can cut a gap in it). */
 const RING_SEGMENTS = 160;
 /**
@@ -543,46 +549,51 @@ export class LocalMapView {
       return true;
     };
 
-    // Each ring label walks around its ring from the top - hugging it from the inside, then from
-    // the outside - to the first spot clear of the other labels, the markers, the line AND the
-    // map's drawn lines (narrated-cut review 2026-10-22: the coastline ran through "10 km" and
-    // "25 km" at the top). The top-inside spot stands as the last resort; any line still crossing
-    // there gets a gap cut under the label. The "N" sits just outside the outer ring at the top.
-    map.ringsKm.forEach((km, ringIndex) => {
-      const text = ringLabel(km);
-      const hw = halfWidthCm(text, RING_LABEL_SIZE);
-      const hh = halfHeightCm(RING_LABEL_SIZE);
-      const r = km * cmPerKm;
-      const boxFor = (deg: number, outside: boolean): Box => {
-        const a = (deg * Math.PI) / 180;
-        const ca = Math.cos(a);
-        const sa = Math.sin(a);
-        // The box's whole extent along the radial direction stays 0.3 cm off the ring's arc.
-        const off = 0.3 + Math.abs(ca) * hw + Math.abs(sa) * hh;
-        const c = outside ? r + off : r - off;
-        return boxAt(ca * c, sa * c, hw, hh);
-      };
-      let box: Box | null = null;
-      for (const requireClear of [true, false]) {
-        for (const outside of [false, true]) {
-          for (const deg of RING_LABEL_ANGLES) {
-            const b = boxFor(deg, outside);
-            if (fits(b, true) && (!requireClear || clearOfMapLines(b, ringIndex))) {
-              box = b;
-              break;
-            }
-          }
-          if (box !== null) break;
-        }
-        if (box !== null) break;
-      }
-      addText("Map ring label", text, RING_LABEL_SIZE, RING_LABEL_COLOR, box !== null ? box : boxFor(90, false));
-    });
+    // "N" first, just outside the outer ring at the top: the ring labels' ray must keep clear of
+    // it, so its box has to be on the board before the ray is chosen.
     {
       const hw = halfWidthCm("N", NORTH_SIZE);
       const hh = halfHeightCm(NORTH_SIZE);
       addText("Map north label", "N", NORTH_SIZE, RING_LABEL_COLOR, boxAt(0, R + 0.25 + hh, hw, hh));
     }
+
+    // The ring labels sit on one ray from home, each centred on its own ring line, as maps usually
+    // do (final-cut review 2026-10-23: one label inside and one outside the same band read as a
+    // legend); the gap in each ring under its label is cut by the shared gap pass below. The ray
+    // is the first candidate direction where every ring label sits clear of the coastline, the
+    // plate lines, the other rings, the markers, the home-epicentre line, "N" and its sibling
+    // labels; when no direction clears them all, the one clearing the most wins and the existing
+    // rules cover the rest (gaps cut under the labels, later labels keep away via `taken`).
+    const ringLabelDims = map.ringsKm.map((km) => {
+      const text = ringLabel(km);
+      return { text, r: km * cmPerKm, hw: halfWidthCm(text, RING_LABEL_SIZE), hh: halfHeightCm(RING_LABEL_SIZE) };
+    });
+    const rayBoxes = (deg: number): Box[] => {
+      const a = (deg * Math.PI) / 180;
+      return ringLabelDims.map((d) => boxAt(Math.cos(a) * d.r, Math.sin(a) * d.r, d.hw, d.hh));
+    };
+    const rayClearCount = (boxes: Box[]): number => {
+      let n = 0;
+      for (let i = 0; i < boxes.length; i++) {
+        let clear = fits(boxes[i], false) && clearOfMapLines(boxes[i], i);
+        for (let j = 0; j < boxes.length && clear; j++) {
+          if (j !== i && boxesIntersect(boxes[i], boxes[j], LABEL_MARGIN_CM)) clear = false;
+        }
+        if (clear) n++;
+      }
+      return n;
+    };
+    let rayDeg = RING_LABEL_RAY_DEGREES[0];
+    let rayScore = -1;
+    for (const deg of RING_LABEL_RAY_DEGREES) {
+      const score = rayClearCount(rayBoxes(deg));
+      if (score > rayScore) {
+        rayScore = score;
+        rayDeg = deg;
+      }
+      if (score === ringLabelDims.length) break;
+    }
+    rayBoxes(rayDeg).forEach((b, i) => addText("Map ring label", ringLabelDims[i].text, RING_LABEL_SIZE, RING_LABEL_COLOR, b));
 
     // The distance label ("15 km S") belongs to the epicentre: beside its ring, flipping through
     // right / left / below / above - first to a spot also clear of the map's drawn lines, then,

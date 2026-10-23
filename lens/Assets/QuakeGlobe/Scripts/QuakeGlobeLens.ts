@@ -179,6 +179,8 @@ export class QuakeGlobeLens extends BaseScriptComponent {
   private viewButtons: Record<string, PanelButton> = {};
   private spinButton!: PanelButton;
 
+  /** The panel backplate's bottom edge in the panel's frame (cm, negative), set by buildPanel. */
+  private panelPlateBottomCm = 0;
   private renderedVersion = -1;
   private haloKey = "";
   private selectedId = "";
@@ -337,6 +339,20 @@ export class QuakeGlobeLens extends BaseScriptComponent {
         const t = this.panel.getTransform();
         return t.getWorldPosition().add(t.getWorldRotation().multiplyVec3(new vec3(0, PANEL_PADDING_CM, 0)));
       },
+      // The dashboard's whole backplate, for the cover-spot hint's planner (final-cut review
+      // 2026-10-23); null while the panel is hidden. Extents in the panel's own frame: the plate
+      // is PANEL_PADDING_CM proud of the content on every side.
+      dashboardPlateWorld: () => {
+        if (!this.panel.enabled) return null;
+        const t = this.panel.getTransform();
+        return {
+          pos: t.getWorldPosition(),
+          rot: t.getWorldRotation(),
+          halfWidthCm: PANEL_WIDTH_CM / 2 + PANEL_PADDING_CM,
+          topCm: PANEL_PADDING_CM,
+          bottomCm: this.panelPlateBottomCm,
+        };
+      },
     };
   }
 
@@ -443,6 +459,7 @@ export class QuakeGlobeLens extends BaseScriptComponent {
     // Backplate behind everything on the panel, padded around the content.
     const contentBottom = row2 - h / 2;
     const plateHeight = -contentBottom + 2 * PANEL_PADDING_CM;
+    this.panelPlateBottomCm = contentBottom - PANEL_PADDING_CM;
     createBackplate(this.panel, W + 2 * PANEL_PADDING_CM, plateHeight, new vec3(0, contentBottom / 2, -0.8));
   }
 
