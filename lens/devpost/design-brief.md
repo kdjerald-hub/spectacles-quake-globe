@@ -220,6 +220,19 @@ what they find. For the Lens:
   dashes add into the white coast and vanish. Leave the coastline out within a small margin of that
   line, so the dashes read; the land tint still shows where the coast is.
 
+## Notes from the review of the final cut (2026-10-23)
+The four reviewers passed the cut with two notes, and the learner asked the agents to fix both. For
+the Lens:
+- The ring labels "25 km" and "10 km" sit in the same band between their two rings, one inside its
+  ring and one outside, so they read as a small legend and it takes a moment to tell which ring is
+  which. Put each ring's label on its own ring line, with a gap in the ring under it, and all of
+  them along one direction from home, as maps usually do.
+- After "Set cover spot", the placement hint follows the line of sight. While the view still rests
+  on the globe, and then sweeps down past the dashboard, the hint is drawn over the globe and over
+  the dashboard's text for about a second. Keep the hint readable, and clear of the globe and the
+  dashboard at every moment: for example above the globe until the line of sight has left them both,
+  then following it as now.
+
 ## Build notes for CLAD
 - Build for SPECS so it runs and can be demonstrated in Lens Studio's preview. No SPECS device is available.
 - Use Spectacles Interaction Kit (SIK) and UI Kit for all interactions, so they work with the mouse in Interactive Preview and with LEAF.
