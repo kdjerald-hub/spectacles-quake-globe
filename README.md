@@ -11,6 +11,8 @@ Made for the Learn AR with SPECS hackathon:
 - built by Claude Code through Snap's CLAD plugin and the Lens Studio MCP;
 - tested with LEAF.
 
+**Demo video (2:41):** https://youtu.be/93ICwid1CAc
+
 > **A simulation, not a warning system.** The alert here is a stand-in: a button replays the M7.4
 > Hualien, Taiwan earthquake of 2024-04-03 from the USGS catalog. The Lens doesn't detect earthquakes
 > or send messages. It has run in the Lens Studio preview only, not yet on Spectacles. See
